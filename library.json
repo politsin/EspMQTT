@@ -8,9 +8,6 @@
   },
   "version": "1.0",
   "downloadUrl": "https://github.com/politsin/EspMQTT/archive/master.zip",
-  "export": {
-    "include": "EspMQTT-master"
-  },
   "frameworks": "arduino",
   "platforms": "espressif",
   "repository": {
