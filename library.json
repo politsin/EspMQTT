@@ -26,6 +26,5 @@
       "name": "ArduinoJson",
       "version": ">=5.13.0"
     }
-  ],
-  "examples": "examples/*.cpp"
+  ]
 }
