@@ -9,7 +9,7 @@
   "version": "1.0",
   "downloadUrl": "https://github.com/politsin/EspMQTT/archive/master.zip",
   "frameworks": "arduino",
-  "platforms": "espressif",
+  "platforms": ["espressif8266", "espressif32"],
   "repository": {
     "type": "git",
     "url": "https://github.com/politsin/EspMQTT.git"
