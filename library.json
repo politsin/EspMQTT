@@ -28,6 +28,6 @@
     }
   ],
   "examples": [
-    "examples/*.cpp"
+    "[Ee]xamples/*.cpp"
   ]
 }
