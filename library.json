@@ -6,7 +6,7 @@
     "name": "Anatoly Politsin",
     "url": "https://politsin.ru"
   },
-  "version": "1.0",
+  "version": "1.0.0",
   "downloadUrl": "https://github.com/politsin/EspMQTT/archive/master.zip",
   "frameworks": "arduino",
   "platforms": ["espressif8266", "espressif32"],
