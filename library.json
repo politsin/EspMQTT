@@ -27,7 +27,5 @@
       "version": ">=5.13.0"
     }
   ],
-  "examples": [
-    "[Ee]xamples/*.cpp"
-  ]
+  "examples": "examples/*.cpp"
 }
