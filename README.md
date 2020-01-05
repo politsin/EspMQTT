@@ -5,7 +5,9 @@ ESP8266 foundation library for MQTT based HomeIOT
 #include <Arduino.h>
 #include "EspMQTT.h"
 
+EspMQTT mqtt;
 void mqtt_callback(String param, String value);
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);

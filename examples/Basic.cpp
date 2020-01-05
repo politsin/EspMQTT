@@ -1,7 +1,9 @@
 #include <Arduino.h>
 #include "EspMQTT.h"
 
+EspMQTT mqtt;
 void mqtt_callback(String param, String value);
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
