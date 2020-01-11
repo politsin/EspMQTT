@@ -258,7 +258,8 @@ void EspMQTT::reconnectWiFi() {
         if (this->debug) {
           Serial.print("Awaiting WiFi Connection (");
           Serial.print((millis() - this->reconnectStart) / 1000);
-          Serial.println("s)");
+          Serial.print("s) ");
+          Serial.println(WiFi.macAddress());
         }
         this->reconnectTimer = millis();
       }
