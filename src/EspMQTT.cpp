@@ -171,7 +171,6 @@ void EspMQTT::callback(char *topic, byte *payload, int length) {
     }
     else {
       this->callbackParceJson(message);
-      // TODO;
     }
   }
   this->publishRecovery();
@@ -192,13 +191,14 @@ String EspMQTT::callbackGetMessage(byte *dat, int len) {
 void EspMQTT::callbackParceJson(String message) {
   char json[256];
   message.toCharArray(json, 256);
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(message);
-  if (root.success()) {
-    Serial.println("parseObject() OK");
+  DynamicJsonDocument doc(1024);
+  auto error = deserializeJson(doc, json);
+  if (!error) {
+
   }
   else if (this->debug) {
-    Serial.println("parseObject() failed");
+    Serial.print(F("deserializeJson() failed with code "));
+    Serial.println(error.c_str());
   }
 }
 
