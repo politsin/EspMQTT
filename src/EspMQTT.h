@@ -57,6 +57,7 @@ class EspMQTT {
     void setAvailabilityPeriod(uint16_t debug);
     // Send.
     void publishData(String data);
+    void publishState(String key, String value);
     void publishMetric(String key, float metric);
     void publishMetric(String key, float metric, bool force);
     // Callbacks.

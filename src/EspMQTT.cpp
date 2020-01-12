@@ -369,6 +369,11 @@ void EspMQTT::publishData(String data) {
   client.publish(dataTopic, data.c_str());
 }
 
+void EspMQTT::publishState(String key, String value){
+  String topic = String(this->stateTopic) + "/" + String(key);
+  client.publish(topic.c_str(), String(value).c_str(), true);
+}
+
 void EspMQTT::publishMetric(String key, float metric) {
   if (metric > 0) {
     this->publishMetric(key, metric, false);
