@@ -7,6 +7,44 @@ WiFiClient espClient;
 // MQTT.
 PubSubClient client(espClient);
 
+void EspMQTT::start() {
+  if (this->debug) {
+    Serial.println("MQTT Start");
+  }
+  WiFi.mode(WIFI_STA);
+  WiFi.hostname(this->WiFiHost);
+  // WiFi.begin(this->WiFiSsid, this->WiFiPass);
+  this->otaBegin();
+  client.setServer(this->mqttServer, this->mqttPort);
+  client.setCallback(callbackStatic);
+  this->reconnect();
+}
+
+void EspMQTT::start(bool init) {
+  this->initMqtt = init;
+  if (this->initMqtt) {
+    this->start();
+  }
+}
+
+void EspMQTT::loop() {
+  if (this->initMqtt) {
+    if (!client.connected()) {
+      this->reconnect();
+    }
+    else {
+      client.loop();
+      if ((millis() - availabilityInterval) >= availabilityTimer && millis() > availabilityInterval) {
+        this->publishAvailability();
+        availabilityTimer = millis();
+      }
+      if (this->ota) {
+        ArduinoOTA.handle();
+      }
+    }
+  }
+}
+
 void EspMQTT::setWiFi(String ssid, String pass, String host) {
   this->WiFiSsid = (char*) strdup(ssid.c_str());
   this->WiFiPass = (char*) strdup(pass.c_str());
@@ -51,44 +89,6 @@ void EspMQTT::addSubsribeTopic(String topic) {
 void EspMQTT::setCallback(std::function<void(String param, String value)> cBack) {
   this->callbackFunction = cBack;
 };
-
-void EspMQTT::start() {
-  if (this->debug) {
-    Serial.println("MQTT Start");
-  }
-  WiFi.mode(WIFI_STA);
-  WiFi.hostname(this->WiFiHost);
-  WiFi.begin(this->WiFiSsid, this->WiFiPass);
-  this->otaBegin();
-  client.setServer(this->mqttServer, this->mqttPort);
-  client.setCallback(callbackStatic);
-  this->reconnect();
-}
-
-void EspMQTT::start(bool init) {
-  this->initMqtt = init;
-  if (this->initMqtt) {
-    this->start();
-  }
-}
-
-void EspMQTT::loop() {
-  if (this->initMqtt) {
-    if (!client.connected()) {
-      this->reconnect();
-    }
-    else {
-      client.loop();
-      if ((millis() - availabilityInterval) >= availabilityTimer && millis() > availabilityInterval) {
-        this->publishAvailability();
-        availabilityTimer = millis();
-      }
-      if (this->ota) {
-        ArduinoOTA.handle();
-      }
-    }
-  }
-}
 
 void EspMQTT::setDebug(bool debug) {
   this->debug = debug;
