@@ -1,19 +1,17 @@
 #include <Arduino.h>
 #include "EspMQTT.h"
 
-// Wifi
-WiFiClient espClient;
-
 // MQTT.
-PubSubClient client(espClient);
+WiFiClient wifiClient;
+PubSubClient client(wifiClient);
 
 void EspMQTT::start() {
   if (this->debug) {
     Serial.println("MQTT Start");
   }
-  WiFi.mode(WIFI_STA);
+  // WiFi.mode(WIFI_STA);
   WiFi.hostname(this->WiFiHost);
-  // WiFi.begin(this->WiFiSsid, this->WiFiPass);
+  WiFi.begin(this->WiFiSsid, this->WiFiPass);
   this->otaBegin();
   client.setServer(this->mqttServer, this->mqttPort);
   client.setCallback(callbackStatic);
@@ -89,6 +87,7 @@ void EspMQTT::addSubsribeTopic(String topic) {
 void EspMQTT::setCallback(std::function<void(String param, String value)> cBack) {
   this->callbackFunction = cBack;
 };
+
 
 void EspMQTT::setDebug(bool debug) {
   this->debug = debug;
@@ -252,7 +251,11 @@ void EspMQTT::reconnectWiFi() {
   if (this->reconnectStep == 1) {
     if (WiFi.status() != WL_CONNECTED) {
       this->online = false;
-      if (this->debug) {
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        if (this->debug) {
+          Serial.print(".");
+        }
       }
       if ((millis() - this->reconnectTimer) > this->reconnectInterval) {
         if (this->debug) {
