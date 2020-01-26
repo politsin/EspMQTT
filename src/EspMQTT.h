@@ -4,14 +4,10 @@
 #include <Arduino.h>
 
 #include <ESP8266WiFi.h>
-#include <ArduinoOTA.h>
-#include <WiFiUdp.h>
-#include <ESP8266mDNS.h>
-#include <ArduinoJson.h>
-#include <PubSubClient.h>
-#include <string>
 #include "Topics.h"
 #include <functional>
+#include <Ticker.h>
+#include <AsyncMqttClient.h>
 
 class EspMQTT {
   public:
@@ -30,8 +26,9 @@ class EspMQTT {
     // Topics.
     Topics *topics;
     String mqttRootTopic;
-    String metricRoot;
+    char* metricRoot;
     // Info.
+    char* ip;
     char* availabilityTopic;
     char* ipTopic;
     // Cmd & Data
@@ -58,15 +55,36 @@ class EspMQTT {
     // Send.
     void publishData(String data);
     void publishState(String key, String value);
+    void publishMetric(char *key, int metric);
+    void publishMetric(String key, int metric);
     void publishMetric(String key, float metric);
     void publishMetric(String key, float metric, bool force);
     // Callbacks.
-    void callback(char *topic, byte *payload, int length);
-    static void callbackStatic(char *topic, byte *payload, int length);
+    void callback(char *topic, char *payload, int length);
     void setCallback(std::function<void(String param, String value)> cBack);
     // Timers.
     void setReconnectInterval(int sec);
     void setAvailabilityInterval(int sec);
+
+    // Online.
+    void setOnline();
+    void setOffline();
+    void mqttSubscribe();
+
+    // Async.
+    void connectToWifi();
+    void onMqttConnect();
+    static void connectToWifiStatic();
+    static void onWifiConnect(const WiFiEventStationModeGotIP& event);
+    static void onWifiDisconnect(const WiFiEventStationModeDisconnected& event);
+    static void connectToMqtt();
+    static void onMqttConnectStatic(bool sessionPresent);
+    static void onMqttConnectStaticDemo(bool sessionPresent);
+    static void onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
+    static void onMqttSubscribe(uint16_t packetId, uint8_t qos);
+    static void onMqttUnsubscribe(uint16_t packetId);
+    static void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
+    static void onMqttPublish(uint16_t packetId);
 
   private:
     bool initMqtt = true;
@@ -78,18 +96,14 @@ class EspMQTT {
     unsigned long availabilityInterval = 30000;
     void setup();
     void setup_ota();
-    void reconnect();
     void reconnectInit();
     void reconnectWatchDog();
     void reconnectWiFi();
     void reconnectMqtt();
     void reconnectSubscribe();
     void subsribe();
-    void callbackDebug(char *topic, byte *dat, int len, String param);
     void callbackParceJson(String message);
-    String callbackGetMessage(byte *dat, int len);
     std::function<void(String param, String value)> callbackFunction;
-    void publishRecovery();
     void publishAvailability();
 };
 extern EspMQTT mqtt;

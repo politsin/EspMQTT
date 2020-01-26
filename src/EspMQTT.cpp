@@ -1,21 +1,33 @@
-#include <Arduino.h>
 #include "EspMQTT.h"
 
 // MQTT.
-WiFiClient wifiClient;
-PubSubClient client(wifiClient);
+AsyncMqttClient mqttClient;
+Ticker mqttReconnectTimer;
+
+WiFiEventHandler wifiConnectHandler;
+WiFiEventHandler wifiDisconnectHandler;
+Ticker wifiReconnectTimer;
 
 void EspMQTT::start() {
   if (this->debug) {
     Serial.println("MQTT Start");
   }
-  // WiFi.mode(WIFI_STA);
+  WiFi.mode(WIFI_STA);
   WiFi.hostname(this->WiFiHost);
-  WiFi.begin(this->WiFiSsid, this->WiFiPass);
-  this->otaBegin();
-  client.setServer(this->mqttServer, this->mqttPort);
-  client.setCallback(callbackStatic);
-  this->reconnect();
+
+  wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
+  wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
+
+  mqttClient.onConnect(onMqttConnectStatic);
+  mqttClient.onDisconnect(onMqttDisconnect);
+  mqttClient.onSubscribe(onMqttSubscribe);
+  mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.onPublish(onMqttPublish);
+  mqttClient.setServer(this->mqttServer, this->mqttPort);
+  mqttClient.setCredentials(this->mqttUser, this->mqttPass);
+  mqttClient.setWill(availabilityTopic, 0, true, "offline");
+  connectToWifiStatic();
 }
 
 void EspMQTT::start(bool init) {
@@ -26,22 +38,155 @@ void EspMQTT::start(bool init) {
 }
 
 void EspMQTT::loop() {
-  if (this->initMqtt) {
-    if (!client.connected()) {
-      this->reconnect();
+  if (this->initMqtt && this->online) {
+    if ((millis() - availabilityInterval) >= availabilityTimer && millis() > availabilityInterval) {
+      availabilityTimer = millis();
+      this->publishAvailability();
     }
-    else {
-      client.loop();
-      if ((millis() - availabilityInterval) >= availabilityTimer && millis() > availabilityInterval) {
-        this->publishAvailability();
-        availabilityTimer = millis();
-      }
-      if (this->ota) {
-        ArduinoOTA.handle();
-      }
-    }
+    /*
+    if (this->ota) {
+      // ArduinoOTA.handle();
+    }*/
   }
 }
+
+
+void EspMQTT::connectToWifi() {
+  Serial.println("Connecting to Wi-Fi...");
+  WiFi.begin(this->WiFiSsid, this->WiFiPass);
+}
+
+void EspMQTT::connectToWifiStatic() {
+  mqtt.connectToWifi();
+}
+
+void EspMQTT::onWifiConnect(const WiFiEventStationModeGotIP& event) {
+  String local_ip = WiFi.localIP().toString();
+  char* ip = (char*) strdup(local_ip.c_str());
+  mqtt.ip = ip;
+  if (mqtt.debug) {
+    Serial.print("Connected to Wi-Fi. IP:");
+    Serial.println(ip);
+  }
+  connectToMqtt();
+}
+
+void EspMQTT::onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
+  mqtt.setOffline();
+  if (mqtt.debug) {
+    Serial.println("Disconnected from Wi-Fi.");
+  }
+  // Ensure we don't reconnect to MQTT while reconnecting to Wi-Fi.
+  mqttReconnectTimer.detach();
+  wifiReconnectTimer.once(2, connectToWifiStatic);
+}
+
+void EspMQTT::connectToMqtt() {
+  Serial.println("Connecting to MQTT...");
+  mqttClient.connect();
+}
+
+void EspMQTT::onMqttConnectStatic(bool sessionPresent) {
+  digitalWrite(LED_BUILTIN, HIGH);
+  String ip = WiFi.localIP().toString();
+  mqttClient.publish(mqtt.ipTopic, 1, true, (char*) strdup(ip.c_str()));
+  mqttClient.publish(mqtt.availabilityTopic, 1, true, "online");
+  mqtt.onMqttConnect();
+  // mqtt.onMqttConnectStaticDemo(sessionPresent);
+}
+
+void EspMQTT::onMqttConnect() {
+  digitalWrite(LED_BUILTIN, HIGH);
+  this->mqttSubscribe();
+  this->setOnline();
+}
+
+void EspMQTT::onMqttConnectStaticDemo(bool sessionPresent) {
+  // Old.
+  Serial.println("Connected to MQTT.");
+  Serial.print("Session present: ");
+  Serial.println(sessionPresent);
+  uint16_t packetIdSub = mqttClient.subscribe("test/lol", 2);
+  Serial.print("Subscribing at QoS 2, packetId: ");
+  Serial.println(packetIdSub);
+  mqttClient.publish("test/lol", 0, true, "test 1");
+  Serial.println("Publishing at QoS 0");
+  uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
+  Serial.print("Publishing at QoS 1, packetId: ");
+  Serial.println(packetIdPub1);
+  uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
+  Serial.print("Publishing at QoS 2, packetId: ");
+  Serial.println(packetIdPub2);
+}
+
+void EspMQTT::onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
+  mqtt.setOffline();
+  if (mqtt.debug) {
+    Serial.println("Disconnected from MQTT.");
+  }
+  if (WiFi.isConnected()) {
+    mqttReconnectTimer.once(2, connectToMqtt);
+  }
+}
+
+void EspMQTT::onMqttSubscribe(uint16_t packetId, uint8_t qos) {
+  Serial.println("Subscribe acknowledged.");
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+  Serial.print("  qos: ");
+  Serial.println(qos);
+}
+
+void EspMQTT::onMqttUnsubscribe(uint16_t packetId) {
+  Serial.println("Unsubscribe acknowledged.");
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+}
+
+void EspMQTT::onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+  mqtt.callback(topic, payload, len);
+  if (false) {
+    Serial.println("Publish received.");
+    Serial.print("  topic: ");
+    Serial.println(topic);
+    Serial.print("  qos: ");
+    Serial.println(properties.qos);
+    Serial.print("  dup: ");
+    Serial.println(properties.dup);
+    Serial.print("  retain: ");
+    Serial.println(properties.retain);
+    Serial.print("  len: ");
+    Serial.println(len);
+    Serial.print("  index: ");
+    Serial.println(index);
+    Serial.print("  total: ");
+    Serial.println(total);
+  }
+}
+
+void EspMQTT::onMqttPublish(uint16_t packetId) {
+  if (false) {
+    Serial.println("Publish acknowledged.");
+    Serial.print("  packetId: ");
+    Serial.println(packetId);
+  }
+}
+
+void EspMQTT::setOffline() {
+  this->online = false;
+  digitalWrite(LED_BUILTIN, LOW);
+  this->reconnectStart = millis();
+  if (this->debug) {
+    Serial.println("Disconnected from MQTT.");
+  }
+}
+
+void EspMQTT::setOnline() {
+  this->online = true;
+  digitalWrite(LED_BUILTIN, HIGH);
+}
+
+
 
 void EspMQTT::setWiFi(String ssid, String pass, String host) {
   this->WiFiSsid = (char*) strdup(ssid.c_str());
@@ -59,11 +204,13 @@ void EspMQTT::setCommonTopics(String root, String name) {
   // Root: /home/[sensor/switch/light]/{name}
   String r = root + "/" + name;
   this->mqttRootTopic = r;
-  this->metricRoot = r + String("/metric");
+  // Metrics.
+  String mRoot = r + String("/metric/");
+  this->metricRoot = (char*) strdup(mRoot.c_str());
   // Info.
-  String ip = r + String("/ip");
   String availability = r + String("/availability");
-  this->ipTopic = (char*) strdup(ip.c_str());;
+  String ip = availability + String("/$ip");
+  this->ipTopic = (char*) strdup(ip.c_str());
   this->availabilityTopic = (char*) strdup(availability.c_str());
   // Commands & Data.
   String cmd = r + String("/cmd/*");
@@ -96,10 +243,6 @@ void EspMQTT::setDebug(bool debug) {
   }
 }
 
-void EspMQTT::setOta(bool ota) {
-  this->ota = ota;
-}
-
 void EspMQTT::setReconnectInterval(int sec) {
   this->reconnectInterval = sec * 1000;
 }
@@ -107,120 +250,31 @@ void EspMQTT::setAvailabilityInterval(int sec) {
   this->availabilityInterval = sec * 1000;
 }
 
-void EspMQTT::otaBegin() {
-  if (this->ota) {
-    ArduinoOTA.setHostname(this->WiFiHost);
-
-    ArduinoOTA.onStart([]() {
-      String type;
-      if (ArduinoOTA.getCommand() == U_FLASH) {
-        type = "sketch";
-      }
-      else { // U_SPIFFS
-        type = "filesystem";
-      }
-
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
-    });
-    ArduinoOTA.onEnd([]() {
-      Serial.println("\nEnd");
-    });
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-    });
-    ArduinoOTA.onError([](ota_error_t error) {
-      Serial.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) {
-        Serial.println("Auth Failed");
-      }
-      else if (error == OTA_BEGIN_ERROR) {
-        Serial.println("Begin Failed");
-      }
-      else if (error == OTA_CONNECT_ERROR) {
-        Serial.println("Connect Failed");
-      }
-      else if (error == OTA_RECEIVE_ERROR) {
-        Serial.println("Receive Failed");
-      }
-      else if (error == OTA_END_ERROR) {
-        Serial.println("End Failed");
-      }
-    });
-    ArduinoOTA.begin();
-  }
-}
-
-
-void EspMQTT::callbackStatic(char *topic, byte *payload, int length) {
-  mqtt.callback(topic, payload, length);
-}
-
-void EspMQTT::callback(char *topic, byte *payload, int length) {
+void EspMQTT::callback(char *topic, char* payload, int length) {
   int from = String(this->cmdTopic).length() - 1;
   String param = String(topic).substring(from);
-  if (length == 1) {
-    char op = (char)payload[0];
-    this->callbackFunction(param, String(op));
-  }
-  else {
-    String message = this->callbackGetMessage(payload, length);
-    if ((char)payload[0] != '{') {
-      this->callbackFunction(param, message);
-    }
-    else {
-      this->callbackParceJson(message);
-    }
-  }
-  this->publishRecovery();
-  this->callbackDebug(topic, payload, length, param);
-}
-
-String EspMQTT::callbackGetMessage(byte *dat, int len) {
-  char message[256];
-  for (int i = 0; i < len; i++) {
-    message[i] = dat[i];
-    if (i == (len - 1)) {
-      message[i + 1] = '\0';
-    }
-  }
-  return String(message);
-}
-
-void EspMQTT::callbackParceJson(String message) {
-  char json[256];
-  message.toCharArray(json, 256);
-  DynamicJsonDocument doc(1024);
-  auto error = deserializeJson(doc, json);
-  if (!error) {
-
-  }
-  else if (this->debug) {
-    Serial.print(F("deserializeJson() failed with code "));
-    Serial.println(error.c_str());
-  }
-}
-
-void EspMQTT::callbackDebug(char *topic, byte *dat, int len, String param) {
+  String message = String(payload);
+  this->callbackFunction(param, message);
   if (this->debug) {
     Serial.print("Message arrived [");
     Serial.print(topic);
     Serial.print("] *");
     Serial.print(param);
     Serial.print("*= ");
-    for (int i = 0; i < len; i++) {
-      Serial.print((char)dat[i]);
-    }
-    Serial.println();
+    Serial.println(payload);
   }
-}
-
-void EspMQTT::reconnect() {
-  this->reconnectInit();
-  this->reconnectWatchDog();
-  this->reconnectWiFi();
-  this->reconnectMqtt();
-  this->reconnectSubscribe();
+  /*
+  if (length == 1) {
+    char op = (char)payload[0];
+  }
+  else {
+    String message = this->callbackGetMessage(payload, length);
+    if ((char)payload[0] != '{') {
+      this->callbackFunction(param, message);
+    }
+  }
+  this->callbackDebug(topic, payload, length, param);
+  */
 }
 
 void EspMQTT::reconnectInit() {
@@ -231,7 +285,7 @@ void EspMQTT::reconnectInit() {
     this->reconnectStep++;
     // Reconnect Delay.
     if (this->online == false) {
-      delay(500);
+      delay(100);
     }
   }
 }
@@ -286,95 +340,59 @@ void EspMQTT::reconnectWiFi() {
 
 void EspMQTT::reconnectMqtt() {
   // 2 - Check MQTT Connection.
+  // client.connect(clientId.c_str(), mqttUser, mqttPass, availabilityTopic, 0, true, "0");
   if (this->reconnectStep == 2) {
-    if (!client.connected()) {
-      if ((millis() - this->reconnectTimer) > this->reconnectInterval) {
-        String clientId = "ESP8266-";
-        clientId += ESP.getChipId();
-        clientId += "-";
-        clientId += String(random(0xffff), HEX);
-        if (this->debug) {
-          Serial.print("Awaiting MQTT Connection (");
-          Serial.print((millis() - this->reconnectStart) / 1000);
-          Serial.print("s) | clientId= ");
-          Serial.println(clientId);
-        }
-        this->reconnectTimer = millis();
-        client.connect(clientId.c_str(), mqttUser, mqttPass, availabilityTopic, 0, true, "0");
-      }
-
-      // Check the MQTT again.
-      if (client.connected()) {
-        this->reconnectTimer = 0;
-        this->reconnectStep = 3;
-        if (this->debug) {
-          Serial.println("MQTT connected!\n");
-        }
-      }
-
-      // Check the WiFi again.
-      else if (WiFi.status() != WL_CONNECTED) {
-        this->reconnectStep = 1;
-      }
-    }
-    else {
-      this->reconnectTimer = 0;
-      this->reconnectStep = 3;
-      if (this->debug) {
-        Serial.println("MQTT connected!\n");
-      }
-    }
+    String clientId = "ESP8266-";
+    clientId += ESP.getChipId();
+    clientId += "-";
+    clientId += String(random(0xffff), HEX);
   }
 }
 
-void EspMQTT::reconnectSubscribe() {
-  // 3 - All connected, turn the LED back on and then MQTT subscribe.
-  if (this->reconnectStep == 3) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    this->publishAvailability();
-    int size = this->topics->getSize();
-    char** list = this->topics->getTopics();
-    // MQTT Subscriptions.
-    for(int i = 0; i < size; i++){
-      client.subscribe(list[i]);
-      if (this->debug) {
-        Serial.println(list[i]);
-      }
+void EspMQTT::mqttSubscribe() {
+  int size = this->topics->getSize();
+  char** list = this->topics->getTopics();
+  // Subscribe all.
+  for(int i = 0; i < size; i++){
+    mqttClient.subscribe(list[i], 2);
+    if (this->debug) {
+      Serial.println(list[i]);
     }
-    if (this->online == false) {
-      this->online = true;
-      if (this->debug) {
-        Serial.println("OnLine!");
-        Serial.println("");
-      }
-    }
-    // Reset Steps!
-    this->reconnectStep = 0;
-  }
-}
-
-void EspMQTT::publishRecovery() {
-  if (false) {
-    client.publish(recoveryTopic, "+", true);
   }
 }
 
 void EspMQTT::publishAvailability() {
-  String ip = WiFi.localIP().toString();
-  client.publish(ipTopic,(char*) strdup(ip.c_str()));
-  client.publish(availabilityTopic, "online", true);
+  mqttClient.publish(ipTopic, 1, true, this->ip);
+  mqttClient.publish(availabilityTopic, 1, true, "online");
   if (this->debug) {
     Serial.println("Publish Availability");
+    Serial.println(ip);
   }
 }
 
 void EspMQTT::publishData(String data) {
-  client.publish(dataTopic, data.c_str());
+  // mqttClient.publish(dataTopic, data.c_str());
 }
 
 void EspMQTT::publishState(String key, String value){
   String topic = String(this->stateTopic) + "/" + String(key);
-  client.publish(topic.c_str(), String(value).c_str(), true);
+  mqttClient.publish(topic.c_str(), 1, true, String(value).c_str());
+}
+
+void EspMQTT::publishMetric(char *key, int metric) {
+  char message[16];
+  itoa(metric, message, 10);
+  char topic[255];
+  strcpy(topic, this->metricRoot);
+  strcat(topic, key);
+  mqttClient.publish(topic, 1, true, message);
+}
+
+void EspMQTT::publishMetric(String key, int metric) {
+  char message[16];
+  itoa(metric, message, 10);
+  String topic = String(this->metricRoot) + key;
+  mqttClient.publish(topic.c_str(), 1, true, message);
 }
 
 void EspMQTT::publishMetric(String key, float metric) {
@@ -385,7 +403,9 @@ void EspMQTT::publishMetric(String key, float metric) {
 
 void EspMQTT::publishMetric(String key, float metric, bool force) {
   if (metric > 0 || force) {
-    String topic = this->metricRoot + "/" + String(key);
-    client.publish(topic.c_str(), String(metric).c_str(), true);
+    char message[16];
+    itoa(metric, message, 10);
+    String topic = String(this->metricRoot) + key;
+    mqttClient.publish(topic.c_str(), 1, true, message);
   }
 }

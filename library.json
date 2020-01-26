@@ -6,7 +6,7 @@
     "name": "Anatoly Politsin",
     "url": "https://politsin.ru"
   },
-  "version": "1.0.5",
+  "version": "1.0.8",
   "frameworks": "arduino",
   "platforms": ["espressif8266", "espressif32"],
   "repository": {
@@ -15,8 +15,8 @@
   },
   "dependencies": [
     {
-      "name": "PubSubClient",
-      "version": ">=2.7"
+      "name": "AsyncMqttClient",
+      "version": ">=0.8.0"
     },
     {
       "name": "ArduinoJson",
