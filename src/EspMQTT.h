@@ -3,11 +3,13 @@
 
 #include <Arduino.h>
 
-#include <ESP8266WiFi.h>
 #include "Topics.h"
-#include <functional>
-#include <Ticker.h>
 #include <AsyncMqttClient.h>
+#include <ESP8266WiFi.h>
+#include <Ticker.h>
+#include <functional>
+#include <string>
+using std::string;
 
 class EspMQTT {
   public:
@@ -25,7 +27,7 @@ class EspMQTT {
 
     // Topics.
     Topics *topics;
-    String mqttRootTopic;
+    string mqttRootTopic;
     char* metricRoot;
     // Info.
     char* ip;
@@ -43,25 +45,25 @@ class EspMQTT {
     void setDebug(bool debug);
     void setOta(bool debug);
     // WiFi setters.
-    void setWiFi(String ssid, String pass, String host);
-    void setMqtt(String server, String user, String pass);
-    void setCommonTopics(String root, String name);
+    void setWiFi(string ssid, string pass, string host);
+    void setMqtt(string server, string user, string pass);
+    void setCommonTopics(string root, string name);
     // Mqtt setters.
-    void setStringValue(char* name, char* value);
-    void addSubsribeTopic(String topic);
+    void setstringValue(char* name, char* value);
+    void addSubsribeTopic(string topic);
     // Loop.
     void loop();
     void setAvailabilityPeriod(uint16_t debug);
     // Send.
-    void publishData(String data);
-    void publishState(String key, String value);
+    void publishData(string data);
+    void publishState(string key, string value);
     void publishMetric(char *key, int metric);
-    void publishMetric(String key, int metric);
-    void publishMetric(String key, float metric);
-    void publishMetric(String key, float metric, bool force);
+    void publishMetric(string key, int metric);
+    void publishMetric(string key, float metric);
+    void publishMetric(string key, float metric, bool force);
     // Callbacks.
     void callback(char *topic, char *payload, int length);
-    void setCallback(std::function<void(String param, String value)> cBack);
+    void setCallback(std::function<void(string param, string value)> cBack);
     // Timers.
     void setReconnectInterval(int sec);
     void setAvailabilityInterval(int sec);
@@ -102,8 +104,8 @@ class EspMQTT {
     void reconnectMqtt();
     void reconnectSubscribe();
     void subsribe();
-    void callbackParceJson(String message);
-    std::function<void(String param, String value)> callbackFunction;
+    void callbackParceJson(string message);
+    std::function<void(string param, string value)> callbackFunction;
     void publishAvailability();
 };
 extern EspMQTT mqtt;

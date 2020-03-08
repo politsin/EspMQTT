@@ -1,9 +1,5 @@
-
 #ifndef Mqtt_Topics_h
 #define Mqtt_Topics_h
-
-#include <Arduino.h>
-using namespace std;
 
 class Topics {
   public:

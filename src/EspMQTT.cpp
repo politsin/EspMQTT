@@ -7,6 +7,7 @@ Ticker mqttReconnectTimer;
 WiFiEventHandler wifiConnectHandler;
 WiFiEventHandler wifiDisconnectHandler;
 Ticker wifiReconnectTimer;
+using std::string;
 
 void EspMQTT::start() {
   if (this->debug) {
@@ -61,7 +62,7 @@ void EspMQTT::connectToWifiStatic() {
 }
 
 void EspMQTT::onWifiConnect(const WiFiEventStationModeGotIP& event) {
-  String local_ip = WiFi.localIP().toString();
+  string local_ip = WiFi.localIP().toString().c_str();
   char* ip = (char*) strdup(local_ip.c_str());
   mqtt.ip = ip;
   if (mqtt.debug) {
@@ -88,7 +89,7 @@ void EspMQTT::connectToMqtt() {
 
 void EspMQTT::onMqttConnectStatic(bool sessionPresent) {
   digitalWrite(LED_BUILTIN, HIGH);
-  String ip = WiFi.localIP().toString();
+  string ip = (char*) WiFi.localIP().toString().c_str();
   mqttClient.publish(mqtt.ipTopic, 1, true, (char*) strdup(ip.c_str()));
   mqttClient.publish(mqtt.availabilityTopic, 1, true, "online");
   mqtt.onMqttConnect();
@@ -186,53 +187,51 @@ void EspMQTT::setOnline() {
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
-
-
-void EspMQTT::setWiFi(String ssid, String pass, String host) {
-  this->WiFiSsid = (char*) strdup(ssid.c_str());
-  this->WiFiPass = (char*) strdup(pass.c_str());
-  this->WiFiHost = (char*) strdup(host.c_str());
+void EspMQTT::setWiFi(std::string ssid, std::string pass, std::string host) {
+  this->WiFiSsid = (char*)strdup(ssid.c_str());
+  this->WiFiPass = (char*)strdup(pass.c_str());
+  this->WiFiHost = (char*)strdup(host.c_str());
 };
 
-void EspMQTT::setMqtt(String server, String user, String pass) {
-  this->mqttServer = (char*) strdup(server.c_str());
-  this->mqttUser   = (char*) strdup(user.c_str());
-  this->mqttPass   = (char*) strdup(pass.c_str());
+void EspMQTT::setMqtt(std::string server, std::string user, std::string pass) {
+    this->mqttServer = (char*)strdup(server.c_str());
+    this->mqttUser = (char*)strdup(user.c_str());
+    this->mqttPass = (char*)strdup(pass.c_str());
 };
 
-void EspMQTT::setCommonTopics(String root, String name) {
-  // Root: /home/[sensor/switch/light]/{name}
-  String r = root + "/" + name;
-  this->mqttRootTopic = r;
-  // Metrics.
-  String mRoot = r + String("/metric/");
-  this->metricRoot = (char*) strdup(mRoot.c_str());
-  // Info.
-  String availability = r + String("/availability");
-  String ip = availability + String("/$ip");
-  this->ipTopic = (char*) strdup(ip.c_str());
-  this->availabilityTopic = (char*) strdup(availability.c_str());
-  // Commands & Data.
-  String cmd = r + String("/cmd/*");
-  String data = r + String("/data");
-  String state = r + String("/state");
-  String recovery = r + String("/recovery");
-  this->dataTopic     = (char*) strdup(data.c_str());
-  this->stateTopic    = (char*) strdup(state.c_str());
-  this->recoveryTopic = (char*) strdup(recovery.c_str());
-  // Subscribe.
-  this->cmdTopic = (char*) strdup(cmd.c_str());
-  Topics *topics = new Topics(this->cmdTopic);
-  this->topics = topics;
+void EspMQTT::setCommonTopics(std::string root, std::string name) {
+    // Root: /home/[sensor/switch/light]/{name}
+    string r = root + "/" + name;
+    this->mqttRootTopic = r;
+    // Metrics.
+    string mRoot = r + string("/metric/");
+    this->metricRoot = (char*)strdup(mRoot.c_str());
+    // Info.
+    string availability = r + string("/availability");
+    string ip = availability + string("/$ip");
+    this->ipTopic = (char*)strdup(ip.c_str());
+    this->availabilityTopic = (char*)strdup(availability.c_str());
+    // Commands & Data.
+    string cmd = r + string("/cmd/*");
+    string data = r + string("/data");
+    string state = r + string("/state");
+    string recovery = r + string("/recovery");
+    this->dataTopic = (char*)strdup(data.c_str());
+    this->stateTopic = (char*)strdup(state.c_str());
+    this->recoveryTopic = (char*)strdup(recovery.c_str());
+    // Subscribe.
+    this->cmdTopic = (char*)strdup(cmd.c_str());
+    Topics* topics = new Topics(this->cmdTopic);
+    this->topics = topics;
 };
 
-void EspMQTT::addSubsribeTopic(String topic) {
-  String subscribe = this->mqttRootTopic + "/" + String(topic);
-  this->topics->addTopic((char*) strdup(subscribe.c_str()));
+void EspMQTT::addSubsribeTopic(string topic) {
+  string subscribe = this->mqttRootTopic + "/" + string(topic);
+  this->topics->addTopic((char*)strdup(subscribe.c_str()));
 }
 
-void EspMQTT::setCallback(std::function<void(String param, String value)> cBack) {
-  this->callbackFunction = cBack;
+void EspMQTT::setCallback(std::function<void(string param, string value)> cBack) {
+    this->callbackFunction = cBack;
 };
 
 
@@ -251,24 +250,24 @@ void EspMQTT::setAvailabilityInterval(int sec) {
 }
 
 void EspMQTT::callback(char *topic, char* payload, int length) {
-  int from = String(this->cmdTopic).length() - 1;
-  String param = String(topic).substring(from);
-  String message = String(payload);
+  int from = string(this->cmdTopic).length() - 1;
+  string param = string(topic).substr(from);
+  string message = string(payload);
   this->callbackFunction(param, message);
   if (this->debug) {
-    Serial.print("Message arrived [");
-    Serial.print(topic);
-    Serial.print("] *");
-    Serial.print(param);
-    Serial.print("*= ");
-    Serial.println(payload);
+      Serial.print("Message arrived [");
+      Serial.print(topic);
+      Serial.print("] *");
+      Serial.print(param.c_str());
+      Serial.print("*= ");
+      Serial.println(payload);
   }
   /*
   if (length == 1) {
     char op = (char)payload[0];
   }
   else {
-    String message = this->callbackGetMessage(payload, length);
+    string message = this->callbackGetMessage(payload, length);
     if ((char)payload[0] != '{') {
       this->callbackFunction(param, message);
     }
@@ -342,10 +341,10 @@ void EspMQTT::reconnectMqtt() {
   // 2 - Check MQTT Connection.
   // client.connect(clientId.c_str(), mqttUser, mqttPass, availabilityTopic, 0, true, "0");
   if (this->reconnectStep == 2) {
-    String clientId = "ESP8266-";
+    string clientId = "ESP8266-";
     clientId += ESP.getChipId();
     clientId += "-";
-    clientId += String(random(0xffff), HEX);
+    clientId += string(random(0xffff), HEX);
   }
 }
 
@@ -370,13 +369,13 @@ void EspMQTT::publishAvailability() {
   }
 }
 
-void EspMQTT::publishData(String data) {
+void EspMQTT::publishData(string data) {
   // mqttClient.publish(dataTopic, data.c_str());
 }
 
-void EspMQTT::publishState(String key, String value){
-  String topic = String(this->stateTopic) + "/" + String(key);
-  mqttClient.publish(topic.c_str(), 1, true, String(value).c_str());
+void EspMQTT::publishState(string key, string value){
+  string topic = string(this->stateTopic) + "/" + string(key);
+  mqttClient.publish(topic.c_str(), 1, true, string(value).c_str());
 }
 
 void EspMQTT::publishMetric(char *key, int metric) {
@@ -388,24 +387,24 @@ void EspMQTT::publishMetric(char *key, int metric) {
   mqttClient.publish(topic, 1, true, message);
 }
 
-void EspMQTT::publishMetric(String key, int metric) {
+void EspMQTT::publishMetric(string key, int metric) {
   char message[16];
   itoa(metric, message, 10);
-  String topic = String(this->metricRoot) + key;
+  string topic = string(this->metricRoot) + key;
   mqttClient.publish(topic.c_str(), 1, true, message);
 }
 
-void EspMQTT::publishMetric(String key, float metric) {
+void EspMQTT::publishMetric(string key, float metric) {
   if (metric > 0) {
     this->publishMetric(key, metric, false);
   }
 }
 
-void EspMQTT::publishMetric(String key, float metric, bool force) {
+void EspMQTT::publishMetric(string key, float metric, bool force) {
   if (metric > 0 || force) {
     char message[16];
     itoa(metric, message, 10);
-    String topic = String(this->metricRoot) + key;
+    string topic = string(this->metricRoot) + key;
     mqttClient.publish(topic.c_str(), 1, true, message);
   }
 }
