@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 
-#include "Topics.h"
 #include <AsyncMqttClient.h>
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
@@ -16,28 +15,27 @@ class EspMQTT {
     bool ota = true;
     bool debug = false;
     bool online = false;
-    char* WiFiSsid;
-    char* WiFiPass;
-    char* WiFiHost;
+    char WiFiSsid[255];
+    char WiFiPass[255];
+    char WiFiHost[255];
     // Config.
-    char* mqttServer;
-    char* mqttUser;
-    char* mqttPass;
-    int   mqttPort = 1883;
+    char mqttServer[255];
+    char mqttUser[255];
+    char mqttPass[255];
+    const uint16_t mqttPort = 1883;
 
     // Topics.
-    Topics *topics;
-    string mqttRootTopic;
-    char* metricRoot;
+    char mqttRootTopic[255];
+    char metricRoot[255];
     // Info.
-    char* ip;
-    char* availabilityTopic;
-    char* ipTopic;
+    char ip[255];
+    char availabilityTopic[255];
+    char ipTopic[255];
     // Cmd & Data
-    char* cmdTopic;
-    char* stateTopic;
-    char* recoveryTopic;
-    char* dataTopic;
+    char cmdTopic[255];
+    char stateTopic[255];
+    char recoveryTopic[255];
+    char dataTopic[255];
 
     void start();
     void start(bool init);
@@ -57,16 +55,16 @@ class EspMQTT {
     // Send.
     void publishData(string data);
     void publishState(string key, string value);
-    void publishMetric(char *key, int metric);
-    void publishMetric(string key, int metric);
+    void publishMetric(char *key, uint16_t metric);
+    void publishMetric(string key, uint16_t metric);
     void publishMetric(string key, float metric);
     void publishMetric(string key, float metric, bool force);
     // Callbacks.
-    void callback(char *topic, char *payload, int length);
+    void callback(char *topic, char *payload, uint16_t length);
     void setCallback(std::function<void(string param, string value)> cBack);
     // Timers.
-    void setReconnectInterval(int sec);
-    void setAvailabilityInterval(int sec);
+    void setReconnectInterval(uint16_t sec);
+    void setAvailabilityInterval(uint16_t sec);
 
     // Online.
     void setOnline();
@@ -90,7 +88,7 @@ class EspMQTT {
 
   private:
     bool initMqtt = true;
-    int  reconnectStep = 0;
+    uint16_t  reconnectStep = 0;
     unsigned long reconnectStart = 0;
     unsigned long reconnectTimer = 0;
     unsigned long reconnectInterval = 1000;

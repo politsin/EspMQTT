@@ -9,6 +9,41 @@ WiFiEventHandler wifiDisconnectHandler;
 Ticker wifiReconnectTimer;
 using std::string;
 
+void EspMQTT::setWiFi(string ssid, string pass, string host) {
+  strcpy(this->WiFiSsid, ssid.c_str());
+  strcpy(this->WiFiPass, pass.c_str());
+  strcpy(this->WiFiHost, host.c_str());
+};
+
+void EspMQTT::setMqtt(string server, string user, string pass) {
+  strcpy(this->mqttServer, server.c_str());
+  strcpy(this->mqttUser, user.c_str());
+  strcpy(this->mqttPass, pass.c_str());
+};
+
+void EspMQTT::setCommonTopics(string root, string name) {
+  // Root: /home/[sensor/switch/light]/{name}
+  string r = root + "/" + name;
+  strcpy(this->mqttRootTopic, r.c_str());
+  // Metrics.
+  string mRoot = r + string("/metric/");
+  strcpy(this->metricRoot, mRoot.c_str());
+  // Info.
+  string availability = r + string("/availability");
+  string ip = availability + string("/$ip");
+  strcpy(this->ipTopic, availability.c_str());
+  strcpy(this->availabilityTopic, ip.c_str());
+  // Commands & Data.
+  string cmd = r + string("/cmd/*");
+  string data = r + string("/data");
+  string state = r + string("/state");
+  string recovery = r + string("/recovery");
+  strcpy(this->cmdTopic, cmd.c_str());
+  strcpy(this->dataTopic, cmd.c_str());
+  strcpy(this->stateTopic, state.c_str());
+  strcpy(this->recoveryTopic, recovery.c_str());
+};
+
 void EspMQTT::start() {
   if (this->debug) {
     Serial.println("MQTT Start");
@@ -62,12 +97,11 @@ void EspMQTT::connectToWifiStatic() {
 }
 
 void EspMQTT::onWifiConnect(const WiFiEventStationModeGotIP& event) {
-  string local_ip = WiFi.localIP().toString().c_str();
-  char* ip = (char*) strdup(local_ip.c_str());
-  mqtt.ip = ip;
+  string ip = WiFi.localIP().toString().c_str();
+  strcpy(mqtt.ip, ip.c_str());
   if (mqtt.debug) {
     Serial.print("Connected to Wi-Fi. IP:");
-    Serial.println(ip);
+    Serial.println(ip.c_str());
   }
   connectToMqtt();
 }
@@ -103,21 +137,22 @@ void EspMQTT::onMqttConnect() {
 }
 
 void EspMQTT::onMqttConnectStaticDemo(bool sessionPresent) {
-  // Old.
-  Serial.println("Connected to MQTT.");
-  Serial.print("Session present: ");
-  Serial.println(sessionPresent);
-  uint16_t packetIdSub = mqttClient.subscribe("test/lol", 2);
-  Serial.print("Subscribing at QoS 2, packetId: ");
-  Serial.println(packetIdSub);
-  mqttClient.publish("test/lol", 0, true, "test 1");
-  Serial.println("Publishing at QoS 0");
-  uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
-  Serial.print("Publishing at QoS 1, packetId: ");
-  Serial.println(packetIdPub1);
-  uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
-  Serial.print("Publishing at QoS 2, packetId: ");
-  Serial.println(packetIdPub2);
+  if (mqtt.debug) {
+    Serial.println("Connected to MQTT.");
+    Serial.print("Session present: ");
+    Serial.println(sessionPresent);
+    uint16_t packetIdSub = mqttClient.subscribe("test/lol", 2);
+    Serial.print("Subscribing at QoS 2, packetId: ");
+    Serial.println(packetIdSub);
+    mqttClient.publish("test/lol", 0, true, "test 1");
+    Serial.println("Publishing at QoS 0");
+    uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
+    Serial.print("Publishing at QoS 1, packetId: ");
+    Serial.println(packetIdPub1);
+    uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
+    Serial.print("Publishing at QoS 2, packetId: ");
+    Serial.println(packetIdPub2);
+  }
 }
 
 void EspMQTT::onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -131,17 +166,21 @@ void EspMQTT::onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
 }
 
 void EspMQTT::onMqttSubscribe(uint16_t packetId, uint8_t qos) {
-  Serial.println("Subscribe acknowledged.");
-  Serial.print("  packetId: ");
-  Serial.println(packetId);
-  Serial.print("  qos: ");
-  Serial.println(qos);
+  if (mqtt.debug) {
+    Serial.println("Subscribe acknowledged.");
+    Serial.print("  packetId: ");
+    Serial.println(packetId);
+    Serial.print("  qos: ");
+    Serial.println(qos);
+  }
 }
 
 void EspMQTT::onMqttUnsubscribe(uint16_t packetId) {
-  Serial.println("Unsubscribe acknowledged.");
-  Serial.print("  packetId: ");
-  Serial.println(packetId);
+  if (mqtt.debug) {
+    Serial.println("Unsubscribe acknowledged.");
+    Serial.print("  packetId: ");
+    Serial.println(packetId);
+  }
 }
 
 void EspMQTT::onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
@@ -187,49 +226,6 @@ void EspMQTT::setOnline() {
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
-void EspMQTT::setWiFi(std::string ssid, std::string pass, std::string host) {
-  this->WiFiSsid = (char*)strdup(ssid.c_str());
-  this->WiFiPass = (char*)strdup(pass.c_str());
-  this->WiFiHost = (char*)strdup(host.c_str());
-};
-
-void EspMQTT::setMqtt(std::string server, std::string user, std::string pass) {
-    this->mqttServer = (char*)strdup(server.c_str());
-    this->mqttUser = (char*)strdup(user.c_str());
-    this->mqttPass = (char*)strdup(pass.c_str());
-};
-
-void EspMQTT::setCommonTopics(std::string root, std::string name) {
-    // Root: /home/[sensor/switch/light]/{name}
-    string r = root + "/" + name;
-    this->mqttRootTopic = r;
-    // Metrics.
-    string mRoot = r + string("/metric/");
-    this->metricRoot = (char*)strdup(mRoot.c_str());
-    // Info.
-    string availability = r + string("/availability");
-    string ip = availability + string("/$ip");
-    this->ipTopic = (char*)strdup(ip.c_str());
-    this->availabilityTopic = (char*)strdup(availability.c_str());
-    // Commands & Data.
-    string cmd = r + string("/cmd/*");
-    string data = r + string("/data");
-    string state = r + string("/state");
-    string recovery = r + string("/recovery");
-    this->dataTopic = (char*)strdup(data.c_str());
-    this->stateTopic = (char*)strdup(state.c_str());
-    this->recoveryTopic = (char*)strdup(recovery.c_str());
-    // Subscribe.
-    this->cmdTopic = (char*)strdup(cmd.c_str());
-    Topics* topics = new Topics(this->cmdTopic);
-    this->topics = topics;
-};
-
-void EspMQTT::addSubsribeTopic(string topic) {
-  string subscribe = this->mqttRootTopic + "/" + string(topic);
-  this->topics->addTopic((char*)strdup(subscribe.c_str()));
-}
-
 void EspMQTT::setCallback(std::function<void(string param, string value)> cBack) {
     this->callbackFunction = cBack;
 };
@@ -242,25 +238,25 @@ void EspMQTT::setDebug(bool debug) {
   }
 }
 
-void EspMQTT::setReconnectInterval(int sec) {
+void EspMQTT::setReconnectInterval(uint16_t sec) {
   this->reconnectInterval = sec * 1000;
 }
-void EspMQTT::setAvailabilityInterval(int sec) {
+void EspMQTT::setAvailabilityInterval(uint16_t sec) {
   this->availabilityInterval = sec * 1000;
 }
 
-void EspMQTT::callback(char *topic, char* payload, int length) {
-  int from = string(this->cmdTopic).length() - 1;
+void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
+  uint16_t from = string(this->cmdTopic).length() - 1;
   string param = string(topic).substr(from);
   string message = string(payload);
   this->callbackFunction(param, message);
   if (this->debug) {
-      Serial.print("Message arrived [");
-      Serial.print(topic);
-      Serial.print("] *");
-      Serial.print(param.c_str());
-      Serial.print("*= ");
-      Serial.println(payload);
+    Serial.print("Message arrived [");
+    Serial.print(topic);
+    Serial.print("] *");
+    Serial.print(param.c_str());
+    Serial.print("*= ");
+    Serial.println(payload);
   }
   /*
   if (length == 1) {
@@ -349,15 +345,17 @@ void EspMQTT::reconnectMqtt() {
 }
 
 void EspMQTT::mqttSubscribe() {
-  int size = this->topics->getSize();
+  mqttClient.subscribe(this->cmdTopic, 2);
+    /*
+  uint16_t size = this->topics->getSize();
   char** list = this->topics->getTopics();
   // Subscribe all.
-  for(int i = 0; i < size; i++){
+  for(uint16_t i = 0; i < size; i++){
     mqttClient.subscribe(list[i], 2);
     if (this->debug) {
       Serial.println(list[i]);
     }
-  }
+  }*/
 }
 
 void EspMQTT::publishAvailability() {
@@ -370,15 +368,15 @@ void EspMQTT::publishAvailability() {
 }
 
 void EspMQTT::publishData(string data) {
-  // mqttClient.publish(dataTopic, data.c_str());
+  mqttClient.publish(dataTopic, 1, true, data.c_str());
 }
 
-void EspMQTT::publishState(string key, string value){
+void EspMQTT::publishState(string key, string value) {
   string topic = string(this->stateTopic) + "/" + string(key);
   mqttClient.publish(topic.c_str(), 1, true, string(value).c_str());
 }
 
-void EspMQTT::publishMetric(char *key, int metric) {
+void EspMQTT::publishMetric(char *key, uint16_t metric) {
   char message[16];
   itoa(metric, message, 10);
   char topic[255];
@@ -387,7 +385,7 @@ void EspMQTT::publishMetric(char *key, int metric) {
   mqttClient.publish(topic, 1, true, message);
 }
 
-void EspMQTT::publishMetric(string key, int metric) {
+void EspMQTT::publishMetric(string key, uint16_t metric) {
   char message[16];
   itoa(metric, message, 10);
   string topic = string(this->metricRoot) + key;
