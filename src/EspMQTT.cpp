@@ -1,13 +1,13 @@
 #include "EspMQTT.h"
 
+using std::string;
 // MQTT.
 AsyncMqttClient mqttClient;
 Ticker mqttReconnectTimer;
-
+// WiFi.
 WiFiEventHandler wifiConnectHandler;
 WiFiEventHandler wifiDisconnectHandler;
 Ticker wifiReconnectTimer;
-using std::string;
 
 void EspMQTT::setWiFi(string ssid, string pass, string host) {
   strcpy(this->WiFiSsid, ssid.c_str());
@@ -117,7 +117,14 @@ void EspMQTT::onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
 }
 
 void EspMQTT::connectToMqtt() {
-  Serial.println("Connecting to MQTT...");
+  if (mqtt.debug) {
+    Serial.println("Connecting to MQTT...");
+  }
+  // string clientId = "ESP8266-";
+  // clientId += ESP.getChipId();
+  // clientId += "-";
+  // clientId += string(random(0xffff), HEX);
+  // mqttClient.setClientId(clientId.c_str());
   mqttClient.connect();
 }
 
@@ -256,7 +263,7 @@ void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
     Serial.print("] *");
     Serial.print(param.c_str());
     Serial.print("*= ");
-    Serial.println(payload);
+    Serial.println(message.c_str());
   }
   /*
   if (length == 1) {
@@ -333,29 +340,10 @@ void EspMQTT::reconnectWiFi() {
   }
 }
 
-void EspMQTT::reconnectMqtt() {
-  // 2 - Check MQTT Connection.
-  // client.connect(clientId.c_str(), mqttUser, mqttPass, availabilityTopic, 0, true, "0");
-  if (this->reconnectStep == 2) {
-    string clientId = "ESP8266-";
-    clientId += ESP.getChipId();
-    clientId += "-";
-    clientId += string(random(0xffff), HEX);
-  }
-}
+
 
 void EspMQTT::mqttSubscribe() {
   mqttClient.subscribe(this->cmdTopic, 2);
-    /*
-  uint16_t size = this->topics->getSize();
-  char** list = this->topics->getTopics();
-  // Subscribe all.
-  for(uint16_t i = 0; i < size; i++){
-    mqttClient.subscribe(list[i], 2);
-    if (this->debug) {
-      Serial.println(list[i]);
-    }
-  }*/
 }
 
 void EspMQTT::publishAvailability() {
