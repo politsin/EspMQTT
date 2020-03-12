@@ -13,6 +13,7 @@ using std::string;
 class EspMQTT {
   public:
     bool ota = true;
+    bool demo = false;
     bool debug = false;
     bool online = false;
     char WiFiSsid[255];
@@ -63,21 +64,22 @@ class EspMQTT {
     void callback(char *topic, char *payload, uint16_t length);
     void setCallback(std::function<void(string param, string value)> cBack);
     // Timers.
-    void setReconnectInterval(uint16_t sec);
     void setAvailabilityInterval(uint16_t sec);
 
     // Online.
     void setOnline();
     void setOffline();
     void mqttSubscribe();
+    void publishAvailability();
 
     // Async.
     void connectToWifi();
-    void onMqttConnect();
+    void onMqttConnect(bool sessionPresent);
     static void connectToWifiStatic();
     static void onWifiConnect(const WiFiEventStationModeGotIP& event);
     static void onWifiDisconnect(const WiFiEventStationModeDisconnected& event);
     static void connectToMqtt();
+    static void publishAvailabilityStatic();
     static void onMqttConnectStatic(bool sessionPresent);
     static void onMqttConnectStaticDemo(bool sessionPresent);
     static void onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
@@ -88,23 +90,12 @@ class EspMQTT {
 
   private:
     bool initMqtt = true;
-    uint16_t  reconnectStep = 0;
-    unsigned long reconnectStart = 0;
-    unsigned long reconnectTimer = 0;
-    unsigned long reconnectInterval = 1000;
-    unsigned long availabilityTimer = 0;
-    unsigned long availabilityInterval = 30000;
+    uint32_t availabilityInterval = 30000;
     void setup();
-    void setup_ota();
-    void reconnectInit();
-    void reconnectWatchDog();
-    void reconnectWiFi();
-    void reconnectMqtt();
-    void reconnectSubscribe();
+    void setupOta();
     void subsribe();
     void callbackParceJson(string message);
     std::function<void(string param, string value)> callbackFunction;
-    void publishAvailability();
 };
 extern EspMQTT mqtt;
 
