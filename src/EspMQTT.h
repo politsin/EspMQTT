@@ -13,7 +13,7 @@ using std::string;
 class EspMQTT {
   public:
     bool ota = true;
-    bool demo = false;
+    bool test = false;
     bool debug = false;
     bool online = false;
     char WiFiSsid[255];
@@ -25,15 +25,17 @@ class EspMQTT {
     char mqttPass[255];
     const uint16_t mqttPort = 1883;
 
+    char ip[255];
     // Topics.
     char mqttRootTopic[255];
     char metricRoot[255];
     // Info.
-    char ip[255];
     char availabilityTopic[255];
     char ipTopic[255];
+    char testTopic[255];
     // Cmd & Data
     char cmdTopic[255];
+    uint16_t cmdTopicLength = 0;
     char stateTopic[255];
     char recoveryTopic[255];
     char dataTopic[255];
@@ -74,7 +76,8 @@ class EspMQTT {
 
     // Async.
     void connectToWifi();
-    void onMqttConnect(bool sessionPresent);
+    void onMqttConnect();
+    void onMqttConnectTests();
     static void connectToWifiStatic();
     static void onWifiConnect(const WiFiEventStationModeGotIP& event);
     static void onWifiDisconnect(const WiFiEventStationModeDisconnected& event);
