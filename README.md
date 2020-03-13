@@ -38,3 +38,7 @@ void mqtt_callback(std::string param, std::string value) {
   Serial.printf("%s=%s\n", param.c_str(), message.c_str());
 }
 ```
+
+## Ref:
+ * https://github.com/marvinroger/async-mqtt-client/blob/master/src/AsyncMqttClient.hpp
+ * https://github.com/Dullage/ESP-LED-MQTT
