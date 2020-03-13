@@ -243,8 +243,7 @@ void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
     // JSON. Do Nothing.
   }
   if (this->debug) {
-    Serial.printf("MQTT [%s] %s=", topic, param.c_str());
-    Serial.println(message.c_str());
+    Serial.printf("MQTT [%s] %s=%s\n", topic, param.c_str(), message.c_str());
   }
 }
 

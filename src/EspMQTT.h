@@ -12,7 +12,7 @@ using std::string;
 
 class EspMQTT {
   public:
-    bool ota = true;
+    bool ota = false;
     bool test = false;
     bool debug = false;
     bool online = false;
