@@ -1,4 +1,6 @@
+#include <Arduino.h>
 #include "EspMQTT.h"
+#include "EspMQTT_App.h"
 
 using std::string;
 // MQTT.
@@ -10,6 +12,8 @@ WiFiEventHandler wifiDisconnectHandler;
 Ticker mqttReconnectTimer;
 Ticker wifiReconnectTimer;
 Ticker mqttAvailabilityTimer;
+// App.
+EspApp eapp;
 
 void EspMQTT::setWiFi(string ssid, string pass, string host) {
   strcpy(this->WiFiSsid, ssid.c_str());
@@ -165,6 +169,10 @@ void EspMQTT::onMqttConnectTests() {
 
 void EspMQTT::setAvailabilityInterval(uint16_t sec) {
   this->availabilityInterval = sec * 1000;
+  mqttAvailabilityTimer.detach();
+  if (this->online) {
+    mqttAvailabilityTimer.attach_ms(sec * 1000, publishAvailabilityStatic);
+  }
 }
 
 void EspMQTT::onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -236,11 +244,21 @@ void EspMQTT::setDebug(bool debug) {
 }
 
 void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
+  if (length >= 1024) {
+    this->publishState("$error", "Message is too big");
+    return;
+  }
   string param = string(topic).substr(this->cmdTopicLength);
   string message = string(payload, length);
-  this->callbackFunction(param, message);
   if ((char)payload[0] != '{') {
     // JSON. Do Nothing.
+  }
+  if ((char)param.at(0) != '$') {
+    this->callbackFunction(param, message);
+  }
+  else {
+    // App.
+    eapp.app(param, message);
   }
   if (this->debug) {
     Serial.printf("MQTT [%s] %s=%s\n", topic, param.c_str(), message.c_str());

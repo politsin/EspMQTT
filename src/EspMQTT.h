@@ -1,13 +1,12 @@
 #ifndef Mqtt_h
 #define Mqtt_h
 
-#include <Arduino.h>
-
 #include <AsyncMqttClient.h>
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
 #include <functional>
 #include <string>
+#include "EspMQTT_App.h"
 using std::string;
 
 class EspMQTT {
