@@ -72,7 +72,7 @@ void EspMQTT::start() {
   mqttClient.setServer(this->mqttServer, this->mqttPort);
   mqttClient.setCredentials(this->mqttUser, this->mqttPass);
   mqttClient.setWill(availabilityTopic, 0, true, "offline");
-  this->connectToWifi();
+  mqtt.connectToWifi();
 }
 
 void EspMQTT::start(bool init) {
@@ -88,14 +88,9 @@ void EspMQTT::loop() {
   }
 }
 
-
 void EspMQTT::connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");
-  WiFi.begin(this->WiFiSsid, this->WiFiPass);
-}
-
-void EspMQTT::connectToWifiStatic() {
-  mqtt.connectToWifi();
+  WiFi.begin(mqtt.WiFiSsid, mqtt.WiFiPass);
 }
 
 void EspMQTT::onWifiConnect(const WiFiEventStationModeGotIP& event) {
@@ -116,7 +111,7 @@ void EspMQTT::onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
   // Ensure we don't reconnect to MQTT while reconnecting to Wi-Fi.
   mqttAvailabilityTimer.detach();
   mqttReconnectTimer.detach();
-  wifiReconnectTimer.once(2, connectToWifiStatic);
+  wifiReconnectTimer.once(2, connectToWifi);
 }
 
 void EspMQTT::connectToMqtt() {
@@ -168,10 +163,13 @@ void EspMQTT::onMqttConnectTests() {
 }
 
 void EspMQTT::setAvailabilityInterval(uint16_t sec) {
-  this->availabilityInterval = sec * 1000;
+  this->availabilityInterval = (uint32_t) sec * 1000;
   mqttAvailabilityTimer.detach();
   if (this->online) {
     mqttAvailabilityTimer.attach_ms(sec * 1000, publishAvailabilityStatic);
+  }
+  if (this->debug) {
+    Serial.printf("Availability Interval=%d ms\n", availabilityInterval);
   }
 }
 

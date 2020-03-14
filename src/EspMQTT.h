@@ -74,10 +74,9 @@ class EspMQTT {
     void publishAvailability();
 
     // Async.
-    void connectToWifi();
     void onMqttConnect();
     void onMqttConnectTests();
-    static void connectToWifiStatic();
+    static void connectToWifi();
     static void onWifiConnect(const WiFiEventStationModeGotIP& event);
     static void onWifiDisconnect(const WiFiEventStationModeDisconnected& event);
     static void connectToMqtt();
