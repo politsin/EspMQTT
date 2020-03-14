@@ -244,6 +244,7 @@ void EspMQTT::setDebug(bool debug) {
 }
 
 void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
+
   if (length >= 1024) {
     this->publishState("$error", "Message is too big");
     return;
@@ -253,16 +254,15 @@ void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
   if ((char)payload[0] != '{') {
     // JSON. Do Nothing.
   }
-  if ((char)param.at(0) != '$') {
-    this->callbackFunction(param, message);
-  }
-  else {
-    // App.
+  if ((char)param.at(0) == '$') {
     eapp.app(param, message);
+    return;
   }
+  this->callbackFunction(param, message);
   if (this->debug) {
     Serial.printf("MQTT [%s] %s=%s\n", topic, param.c_str(), message.c_str());
   }
+
 }
 
 void EspMQTT::publishAvailabilityStatic() {

@@ -4,15 +4,15 @@
 using std::string;
 
 bool EspApp::app(string param, string message) {
-  if (param.compare("$echo") == 0) {
-    mqtt.publishState("$message", message);
+  if (param.compare(this->echoTopic) == 0) {
+    mqtt.publishState(this->messageState, message);
     return true;
   }
-  else if (param.compare("$update") == 0) {
-    mqtt.publishState("$error", "Not ready yet");
+  else if (param.compare(this->updateTopic) == 0) {
+    mqtt.publishState(this->errorState, "Not ready yet");
     return true;
   }
-  else if (param.compare("$setInterval") == 0) {
+  else if (param.compare(this->setIntervalTopic) == 0) {
     int16_t interval = this->stringToInt(message);
     if (interval > 0) {
       mqtt.setAvailabilityInterval(interval);
@@ -20,20 +20,20 @@ bool EspApp::app(string param, string message) {
     }
     return false;
   }
-  else if (param.compare("$pinRead") == 0) {
-    mqtt.publishState("$error", "Not ready yet");
+  else if (param.compare(this->pinReadTopic) == 0) {
+    mqtt.publishState(this->errorState, "Not ready yet");
     return true;
   }
-  else if (param.compare("$pinReadAnalog") == 0) {
-    mqtt.publishState("$error", "Not ready yet");
+  else if (param.compare(this->pinReadAnalogTopic) == 0) {
+    mqtt.publishState(this->errorState, "Not ready yet");
     return true;
   }
-  else if (param.compare("$pinSet") == 0) {
-    mqtt.publishState("$error", "Not ready yet");
+  else if (param.compare(this->pinSetTopic) == 0) {
+    mqtt.publishState(this->errorState, "Not ready yet");
     return true;
   }
-  else if (param.compare("$pinSetPwm") == 0) {
-    mqtt.publishState("$error", "Not ready yet");
+  else if (param.compare(this->pinSetPwmTopic) == 0) {
+    mqtt.publishState(this->errorState, "Not ready yet");
     return true;
   }
   if (this->debug) {
@@ -43,12 +43,17 @@ bool EspApp::app(string param, string message) {
 }
 
 int16_t EspApp::stringToInt(string message) {
-  const char* number = message.c_str();
+  int16_t interval(0);
   int size = message.length();
-  char stackbuf[size+1];
-  memcpy(stackbuf, number, size);
-  stackbuf[size] = '\0';
-  int num = atoi(stackbuf);
-  int16_t interval = static_cast<uint16_t>(num);
+  if (size < 1024) {
+  /* TODO:
+    const char* number = message.c_str();
+    char stackbuf[size+1];
+    memcpy(stackbuf, number, size);
+    stackbuf[size] = '\0';
+    int num = atoi(stackbuf);
+    interval = static_cast<uint16_t>(num);
+  */
+  }
   return interval;
 }
