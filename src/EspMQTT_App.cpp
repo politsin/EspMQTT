@@ -8,15 +8,6 @@ bool EspApp::app(string param, string message) {
     mqtt.publishState(this->messageState, message);
     return true;
   }
-  if (param == "$setInterval") {
-    int number = std::atoi(message.c_str());
-    if (number > 0) {
-      uint16_t sec = static_cast<uint16_t>(number);
-      mqtt.setAvailabilityInterval(sec);
-      return true;
-    }
-    return false;
-  }
   if (param == "$update") {
     mqtt.publishState(this->errorState, this->notReady);
     return true;
@@ -56,6 +47,7 @@ bool EspApp::appInterrupt(char* topic, char* payload, size_t length) {
       mqtt.setAvailabilityInterval(sec);
       return true;
     }
+    return false;
   }
   if (this->compareStr(param, (char*) "$debugInterrupt")) {
     string message = string(payload, length);
