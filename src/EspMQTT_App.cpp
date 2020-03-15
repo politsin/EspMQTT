@@ -42,3 +42,26 @@ bool EspApp::app(string param, string message) {
   }
   return false;
 }
+
+bool EspApp::appInterrupt(char* topic, char* payload, size_t length) {
+  if (length >= 1024) {
+    return false;
+  }
+  char param[255];
+  memcpy(param, &topic[mqtt.cmdTopicLength], strlen(topic));
+  if (this->compareStr(param, (char*) "$setInterval")) {
+    int number = std::atoi(payload);
+    if (number > 0) {
+      uint16_t sec = static_cast<uint16_t>(number);
+      mqtt.setAvailabilityInterval(sec);
+      return true;
+    }
+  }
+  if (this->compareStr(param, (char*) "$debugInterrupt")) {
+    string message = string(payload, length);
+    Serial.printf("MQTT-Interrupt %s=%s\n", param, message.c_str());
+    mqtt.publishState(this->messageState, message);
+    return true;
+  }
+  return false;
+}

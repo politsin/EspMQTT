@@ -139,8 +139,7 @@ void EspMQTT::onWifiConnect(const WiFiEventStationModeGotIP& event) {
   string ip = WiFi.localIP().toString().c_str();
   strcpy(mqtt.ip, ip.c_str());
   if (mqtt.debugLevel >= 2) {
-    Serial.printf("Connected to Wi-Fi. IP: %s\n", ip.c_str());
-    Serial.println();
+    Serial.printf("Connected to Wi-Fi. IP: %s\n", mqtt.ip);
   }
   connectToMqtt();
 }
@@ -238,11 +237,15 @@ void EspMQTT::onMqttUnsubscribe(uint16_t packetId) {
 }
 
 void EspMQTT::onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+  uint8_t pos = mqtt.cmdTopicLength;
+  if ((char)topic[pos] == '$') {
+    eapp.appInterrupt(topic, payload, len);
+    return;
+  }
   mqtt.messageFlag = true;
   mqtt.length = len;
   mqtt.topic = topic;
   mqtt.payload = payload;
-  // mqtt.callback(topic, payload, len);
   if (mqtt.test) {
     Serial.println("Publish received.");
     Serial.printf("  topic: %s\n", topic);
@@ -278,29 +281,6 @@ void EspMQTT::setDebugLevel(uint8_t debugLevel) {
     Serial.printf("debugLevel > ON %d\n", debugLevel);
   }
 }
-
-/*
-void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
-
-  if (length >= 1024) {
-    this->publishState("$error", "Message is too big");
-    return;
-  }
-  string param = string(topic).substr(this->cmdTopicLength);
-  string message = string(payload, length);
-  if ((char)payload[0] != '{') {
-    // JSON. Do Nothing.
-  }
-  if ((char)param.at(0) == '$') {
-    eapp.app(param, message);
-    return;
-  }
-  this->callbackFunction(param, message);
-  if (this->debugLevel >= 1) {
-    Serial.printf("MQTT [%s] %s=%s\n", topic, param.c_str(), message.c_str());
-  }
-
-}*/
 
 void EspMQTT::publishAvailabilityStatic() {
   mqtt.availabilityFlag = true;
