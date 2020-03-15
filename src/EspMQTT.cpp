@@ -177,6 +177,11 @@ void EspMQTT::setOnline() {
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
+void EspMQTT::setOffline() {
+  this->online = false;
+  digitalWrite(LED_BUILTIN, LOW);
+}
+
 void EspMQTT::onMqttConnect() {
   this->publishAvailability();
   this->mqttSubscribe();
@@ -264,11 +269,6 @@ void EspMQTT::onMqttPublish(uint16_t packetId) {
 
 void EspMQTT::mqttSubscribe() {
   mqttClient.subscribe(this->cmdTopic, 2);
-}
-
-void EspMQTT::setOffline() {
-  this->online = false;
-  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void EspMQTT::setCallback(std::function<void(string param, string value)> cBack) {
