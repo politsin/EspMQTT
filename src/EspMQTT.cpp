@@ -63,7 +63,7 @@ void EspMQTT::start() {
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
 
-  mqttClient.onConnect(onMqttConnectStatic);
+  mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);
   mqttClient.onSubscribe(onMqttSubscribe);
   mqttClient.onUnsubscribe(onMqttUnsubscribe);
@@ -89,14 +89,19 @@ void EspMQTT::start(bool init) {
 
 void EspMQTT::loop() {
   if (this->online) {
+    if (this->onlineFlag) {
+      this->onlineFlag = false;
+      this->publishAvailability();
+      this->availabilityFlag = false;
+      this->mqttSubscribe();
+      if (this->debugLevel >= 1) {
+        Serial.println("Connected to MQTT.");
+        this->mqttTests();
+      }
+    }
     if (this->availabilityFlag) {
       this->availabilityFlag = false;
       this->publishAvailability();
-    }
-    if (this->onlineFlag) {
-      this->onlineFlag = false;
-      this->onMqttConnect();
-      this->onMqttConnectTests();
     }
     if (this->messageFlag) {
       this->messageFlag = false;
@@ -162,10 +167,10 @@ void EspMQTT::connectToMqtt() {
   mqttClient.connect();
 }
 
-void EspMQTT::onMqttConnectStatic(bool sessionPresent) {
+void EspMQTT::onMqttConnect(bool sessionPresent) {
   mqtt.setOnline();
   mqtt.availabilityFlag = true;
-  mqttAvailabilityTimer.attach_ms(mqtt.availabilityInterval, publishAvailabilityStatic);
+  mqttAvailabilityTimer.attach_ms(mqtt.availabilityInterval, publishAvailabilityFlagger);
   if (mqtt.debugLevel >= 2) {
     Serial.printf("Session present: %d\n", sessionPresent);
   }
@@ -182,15 +187,7 @@ void EspMQTT::setOffline() {
   digitalWrite(LED_BUILTIN, LOW);
 }
 
-void EspMQTT::onMqttConnect() {
-  this->publishAvailability();
-  this->mqttSubscribe();
-  if (this->debugLevel >= 1) {
-    Serial.println("Connected to MQTT.");
-  }
-}
-
-void EspMQTT::onMqttConnectTests() {
+void EspMQTT::mqttTests() {
   if (this->test) {
     string test = string(cmdTopic).substr(0, cmdTopicLength) + string("test");
     const char* topic = test.c_str();
@@ -212,7 +209,7 @@ void EspMQTT::setAvailabilityInterval(uint16_t sec) {
   this->availabilityInterval = (uint32_t) sec * 1000;
   mqttAvailabilityTimer.detach();
   if (this->online) {
-    mqttAvailabilityTimer.attach_ms(sec * 1000, publishAvailabilityStatic);
+    mqttAvailabilityTimer.attach_ms(sec * 1000, publishAvailabilityFlagger);
   }
   if (this->debugLevel >= 2) {
     Serial.printf("Availability Interval=%d ms\n", availabilityInterval);
@@ -282,7 +279,7 @@ void EspMQTT::setDebugLevel(uint8_t debugLevel) {
   }
 }
 
-void EspMQTT::publishAvailabilityStatic() {
+void EspMQTT::publishAvailabilityFlagger() {
   mqtt.availabilityFlag = true;
 }
 

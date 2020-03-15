@@ -78,21 +78,19 @@ class EspMQTT {
     // Timers.
 
     // Online.
+    void mqttTests();
     void setOnline();
     void setOffline();
     void mqttSubscribe();
     void publishAvailability();
 
     // Async.
-    void onMqttConnect();
-    void onMqttConnectTests();
     static void connectToWifi();
     static void onWifiConnect(const WiFiEventStationModeGotIP& event);
     static void onWifiDisconnect(const WiFiEventStationModeDisconnected& event);
     static void connectToMqtt();
-    static void publishAvailabilityStatic();
-    static void onMqttConnectStatic(bool sessionPresent);
-    static void onMqttConnectStaticDemo(bool sessionPresent);
+    static void publishAvailabilityFlagger();
+    static void onMqttConnect(bool sessionPresent);
     static void onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
     static void onMqttSubscribe(uint16_t packetId, uint8_t qos);
     static void onMqttUnsubscribe(uint16_t packetId);
