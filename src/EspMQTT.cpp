@@ -54,7 +54,7 @@ void EspMQTT::setCommonTopics(string root, string name) {
 void EspMQTT::start() {
   this->online = false;
   digitalWrite(LED_BUILTIN, LOW);
-  if (this->debug) {
+  if (this->debugLevel >= 2) {
     Serial.println("MQTT Start");
   }
   WiFi.mode(WIFI_STA);
@@ -72,6 +72,11 @@ void EspMQTT::start() {
   mqttClient.setServer(this->mqttServer, this->mqttPort);
   mqttClient.setCredentials(this->mqttUser, this->mqttPass);
   mqttClient.setWill(availabilityTopic, 0, true, "offline");
+  // string clientId = "ESP8266-";
+  // clientId += ESP.getChipId();
+  // clientId += "-";
+  // clientId += string(random(0xffff), HEX);
+  // mqttClient.setClientId(clientId.c_str());
   mqtt.connectToWifi();
 }
 
@@ -83,29 +88,66 @@ void EspMQTT::start(bool init) {
 }
 
 void EspMQTT::loop() {
-  if (this->online && this->ota) {
-    // ArduinoOTA.handle();
+  if (this->online) {
+    if (this->availabilityFlag) {
+      this->availabilityFlag = false;
+      this->publishAvailability();
+    }
+    if (this->onlineFlag) {
+      this->onlineFlag = false;
+      this->onMqttConnect();
+      this->onMqttConnectTests();
+    }
+    if (this->messageFlag) {
+      this->messageFlag = false;
+      this->messageLoop();
+    }
+    if (this->ota) {
+      // ArduinoOTA.handle();
+    }
+  }
+}
+
+void EspMQTT::messageLoop() {
+  if (length >= 1024) {
+    this->publishState("$error", "Message is too big");
+    return;
+  }
+  string param = string(topic).substr(this->cmdTopicLength);
+  string message = string(payload, length);
+  if ((char)payload[0] != '{') {
+    // JSON. Do Nothing.
+  }
+  if ((char)param.at(0) == '$') {
+    eapp.app(param, message);
+    return;
+  }
+  this->callbackFunction(param, message);
+  if (this->debugLevel) {
+    Serial.printf("MQTT [%s] %s=%s\n", topic, param.c_str(), message.c_str());
   }
 }
 
 void EspMQTT::connectToWifi() {
-  Serial.println("Connecting to Wi-Fi...");
+  if (mqtt.debugLevel >= 2) {
+    Serial.println("Connecting to Wi-Fi...");
+  }
   WiFi.begin(mqtt.WiFiSsid, mqtt.WiFiPass);
 }
 
 void EspMQTT::onWifiConnect(const WiFiEventStationModeGotIP& event) {
   string ip = WiFi.localIP().toString().c_str();
   strcpy(mqtt.ip, ip.c_str());
-  if (mqtt.debug) {
-    Serial.print("Connected to Wi-Fi. IP:");
-    Serial.println(ip.c_str());
+  if (mqtt.debugLevel >= 2) {
+    Serial.printf("Connected to Wi-Fi. IP: %s\n", ip.c_str());
+    Serial.println();
   }
   connectToMqtt();
 }
 
 void EspMQTT::onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
   mqtt.setOffline();
-  if (mqtt.debug) {
+  if (mqtt.debugLevel >= 1) {
     Serial.println("Disconnected from Wi-Fi.");
   }
   // Ensure we don't reconnect to MQTT while reconnecting to Wi-Fi.
@@ -115,31 +157,31 @@ void EspMQTT::onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
 }
 
 void EspMQTT::connectToMqtt() {
-  if (mqtt.debug) {
+  if (mqtt.debugLevel >=2 ) {
     Serial.println("Connecting to MQTT...");
   }
-  // string clientId = "ESP8266-";
-  // clientId += ESP.getChipId();
-  // clientId += "-";
-  // clientId += string(random(0xffff), HEX);
-  // mqttClient.setClientId(clientId.c_str());
   mqttClient.connect();
 }
 
 void EspMQTT::onMqttConnectStatic(bool sessionPresent) {
+  mqtt.setOnline();
+  mqtt.availabilityFlag = true;
   mqttAvailabilityTimer.attach_ms(mqtt.availabilityInterval, publishAvailabilityStatic);
-  mqtt.onMqttConnect();
-  mqtt.onMqttConnectTests();
-  if (mqtt.debug) {
+  if (mqtt.debugLevel >= 2) {
     Serial.printf("Session present: %d\n", sessionPresent);
   }
+}
+
+void EspMQTT::setOnline() {
+  this->online = true;
+  this->onlineFlag = true;
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void EspMQTT::onMqttConnect() {
   this->publishAvailability();
   this->mqttSubscribe();
-  this->setOnline();
-  if (this->debug) {
+  if (this->debugLevel >= 1) {
     Serial.println("Connected to MQTT.");
   }
 }
@@ -168,14 +210,14 @@ void EspMQTT::setAvailabilityInterval(uint16_t sec) {
   if (this->online) {
     mqttAvailabilityTimer.attach_ms(sec * 1000, publishAvailabilityStatic);
   }
-  if (this->debug) {
+  if (this->debugLevel >= 2) {
     Serial.printf("Availability Interval=%d ms\n", availabilityInterval);
   }
 }
 
 void EspMQTT::onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
   mqtt.setOffline();
-  if (mqtt.debug) {
+  if (mqtt.debugLevel >= 1) {
     Serial.println("Disconnected from MQTT.");
   }
   if (WiFi.isConnected()) {
@@ -184,19 +226,23 @@ void EspMQTT::onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
 }
 
 void EspMQTT::onMqttSubscribe(uint16_t packetId, uint8_t qos) {
-  if (mqtt.debug) {
+  if (mqtt.debugLevel >= 2) {
     Serial.printf("Subscribe: packetId=%d | QOS=%d\n", packetId, qos);
   }
 }
 
 void EspMQTT::onMqttUnsubscribe(uint16_t packetId) {
-  if (mqtt.debug) {
+  if (mqtt.debugLevel >= 2) {
     Serial.printf("Unsubscribe: packetId=%d\n", packetId);
   }
 }
 
 void EspMQTT::onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-  mqtt.callback(topic, payload, len);
+  mqtt.messageFlag = true;
+  mqtt.length = len;
+  mqtt.topic = topic;
+  mqtt.payload = payload;
+  // mqtt.callback(topic, payload, len);
   if (mqtt.test) {
     Serial.println("Publish received.");
     Serial.printf("  topic: %s\n", topic);
@@ -217,30 +263,23 @@ void EspMQTT::mqttSubscribe() {
   mqttClient.subscribe(this->cmdTopic, 2);
 }
 
-void EspMQTT::setOnline() {
-  this->online = true;
-  digitalWrite(LED_BUILTIN, HIGH);
-}
-
 void EspMQTT::setOffline() {
   this->online = false;
   digitalWrite(LED_BUILTIN, LOW);
-  if (this->debug) {
-    Serial.println("Disconnected from MQTT.");
-  }
 }
 
 void EspMQTT::setCallback(std::function<void(string param, string value)> cBack) {
     this->callbackFunction = cBack;
 };
 
-void EspMQTT::setDebug(bool debug) {
-  this->debug = debug;
-  if (this->debug) {
-    Serial.println("DEBUG > ON");
+void EspMQTT::setDebugLevel(uint8_t debugLevel) {
+  this->debugLevel = debugLevel;
+  if (this->debugLevel) {
+    Serial.printf("debugLevel > ON %d\n", debugLevel);
   }
 }
 
+/*
 void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
 
   if (length >= 1024) {
@@ -257,20 +296,20 @@ void EspMQTT::callback(char *topic, char* payload, uint16_t length) {
     return;
   }
   this->callbackFunction(param, message);
-  if (this->debug) {
+  if (this->debugLevel >= 1) {
     Serial.printf("MQTT [%s] %s=%s\n", topic, param.c_str(), message.c_str());
   }
 
-}
+}*/
 
 void EspMQTT::publishAvailabilityStatic() {
-  mqtt.publishAvailability();
+  mqtt.availabilityFlag = true;
 }
 
 void EspMQTT::publishAvailability() {
   mqttClient.publish(ipTopic, 0, true, this->ip);
   mqttClient.publish(availabilityTopic, 0, true, "online");
-  if (this->debug) {
+  if (this->debugLevel >= 1) {
     Serial.printf("MQTT [Publish Availability] at %s\n", ip);
   }
 }

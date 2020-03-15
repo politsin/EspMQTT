@@ -13,8 +13,13 @@ class EspMQTT {
   public:
     bool ota = false;
     bool test = false;
-    bool debug = false;
     bool online = false;
+    int8_t debugLevel = 0;
+    // Flag.
+    bool onlineFlag = false;
+    bool messageFlag = false;
+    bool availabilityFlag = false;
+    // Set.
     char WiFiSsid[255];
     char WiFiPass[255];
     char WiFiHost[255];
@@ -38,12 +43,17 @@ class EspMQTT {
     char stateTopic[255];
     char recoveryTopic[255];
     char dataTopic[255];
+    // Message.
+    size_t length;
+    char *topic;
+    char *payload;
+    void messageLoop();
 
     void start();
     void start(bool init);
     void otaBegin();
-    void setDebug(bool debug);
-    void setOta(bool debug);
+    void setDebugLevel(uint8_t debugLevel);
+    void setOta(bool ota);
     // WiFi setters.
     void setWiFi(string ssid, string pass, string host);
     void setMqtt(string server, string user, string pass);
@@ -53,7 +63,8 @@ class EspMQTT {
     void addSubsribeTopic(string topic);
     // Loop.
     void loop();
-    void setAvailabilityPeriod(uint16_t debug);
+    void setAvailabilityInterval(uint16_t sec);
+
     // Send.
     void publishData(string data);
     void publishState(string key, string value);
@@ -62,10 +73,9 @@ class EspMQTT {
     void publishMetric(string key, float metric);
     void publishMetric(string key, float metric, bool force);
     // Callbacks.
-    void callback(char *topic, char *payload, uint16_t length);
+    // void callback(char *topic, char *payload, uint16_t length);
     void setCallback(std::function<void(string param, string value)> cBack);
     // Timers.
-    void setAvailabilityInterval(uint16_t sec);
 
     // Online.
     void setOnline();
