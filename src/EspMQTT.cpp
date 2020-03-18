@@ -51,7 +51,7 @@ void EspMQTT::setCommonTopics(string root, string name) {
   strcpy(this->recoveryTopic, recovery.c_str());
 };
 
-void EspMQTT::start(bool init = true) {
+void EspMQTT::start(bool init) {
   this->initMqtt = init;
   if (this->initMqtt) {
     this->online = false;

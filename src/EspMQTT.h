@@ -49,7 +49,7 @@ class EspMQTT {
     char *payload;
     void messageLoop();
 
-    void start(bool init);
+    void start(bool init = true);
     void otaBegin();
     void setDebugLevel(uint8_t debugLevel);
     void setOta(bool ota);
