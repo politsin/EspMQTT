@@ -51,43 +51,42 @@ void EspMQTT::setCommonTopics(string root, string name) {
   strcpy(this->recoveryTopic, recovery.c_str());
 };
 
-void EspMQTT::start() {
-  this->online = false;
-  digitalWrite(LED_BUILTIN, LOW);
-  if (this->debugLevel >= 2) {
-    Serial.println("MQTT Start");
-  }
-  WiFi.mode(WIFI_STA);
-  WiFi.hostname(this->WiFiHost);
-
-  wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
-  wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
-
-  mqttClient.onConnect(onMqttConnect);
-  mqttClient.onDisconnect(onMqttDisconnect);
-  mqttClient.onSubscribe(onMqttSubscribe);
-  mqttClient.onUnsubscribe(onMqttUnsubscribe);
-  mqttClient.onMessage(onMqttMessage);
-  mqttClient.onPublish(onMqttPublish);
-  mqttClient.setServer(this->mqttServer, this->mqttPort);
-  mqttClient.setCredentials(this->mqttUser, this->mqttPass);
-  mqttClient.setWill(availabilityTopic, 0, true, "offline");
-  // string clientId = "ESP8266-";
-  // clientId += ESP.getChipId();
-  // clientId += "-";
-  // clientId += string(random(0xffff), HEX);
-  // mqttClient.setClientId(clientId.c_str());
-  mqtt.connectToWifi();
-}
-
-void EspMQTT::start(bool init) {
+void EspMQTT::start(bool init = true) {
   this->initMqtt = init;
   if (this->initMqtt) {
-    this->start();
+    this->online = false;
+    digitalWrite(LED_BUILTIN, LOW);
+    if (this->debugLevel >= 2) {
+      Serial.println("MQTT Start");
+    }
+    WiFi.mode(WIFI_STA);
+    WiFi.hostname(this->WiFiHost);
+
+    wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
+    wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
+
+    mqttClient.onConnect(onMqttConnect);
+    mqttClient.onDisconnect(onMqttDisconnect);
+    mqttClient.onSubscribe(onMqttSubscribe);
+    mqttClient.onUnsubscribe(onMqttUnsubscribe);
+    mqttClient.onMessage(onMqttMessage);
+    mqttClient.onPublish(onMqttPublish);
+    mqttClient.setServer(this->mqttServer, this->mqttPort);
+    mqttClient.setCredentials(this->mqttUser, this->mqttPass);
+    mqttClient.setWill(availabilityTopic, 0, true, "offline");
+    // string clientId = "ESP8266-";
+    // clientId += ESP.getChipId();
+    // clientId += "-";
+    // clientId += string(random(0xffff), HEX);
+    // mqttClient.setClientId(clientId.c_str());
+    mqtt.connectToWifi();
   }
 }
 
 void EspMQTT::loop() {
+  if (this->initMqtt) {
+    // Do nothing.
+  }
   if (this->online) {
     if (this->onlineFlag) {
       this->onlineFlag = false;
