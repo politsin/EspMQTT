@@ -20,7 +20,12 @@ void Esp32MQTT::setWiFi(string ssid, string pass, string host) {
 };
 
 void Esp32MQTT::setMqtt(string server, string user, string pass) {
-  strcpy(this->mqttServer, server.c_str());
+  char device[23];
+  uint64_t chipid = ESP.getEfuseMac();
+  uint16_t chip = (uint16_t)(chipid >> 32);
+  snprintf(device, 23, "ESP32-%04X%08X", chip, (uint32_t)chipid);
+  strcpy(this->mqttDevice, device);
+  strcpy(this->mqttHost, server.c_str());
   strcpy(this->mqttUser, user.c_str());
   strcpy(this->mqttPass, pass.c_str());
 };
@@ -61,19 +66,15 @@ void Esp32MQTT::start(bool init) {
     }
     setupTimers();
     printf("Connecting to Wi-Fi...\n");
-    // string clientId = "ESP8266-";
-    // clientId += ESP.getChipId();
-    // clientId += "-";
-    // clientId += string(esp_random(), HEX);
-    // MqttClient.
-    // mqttClient.setClientId(clientId.c_str());
+
     mqttClient.onConnect(onMqttConnect);
     mqttClient.onDisconnect(onMqttDisconnect);
     mqttClient.onSubscribe(onMqttSubscribe);
     mqttClient.onUnsubscribe(onMqttUnsubscribe);
     mqttClient.onMessage(onMqttMessage);
     mqttClient.onPublish(onMqttPublish);
-    mqttClient.setServer(this->mqttServer, this->mqttPort);
+    mqttClient.setClientId(this->mqttDevice);
+    mqttClient.setServer(this->mqttHost, this->mqttPort);
     mqttClient.setCredentials(this->mqttUser, this->mqttPass);
     mqttClient.setWill(availabilityTopic, 0, true, "offline");
     // WiFi.
@@ -83,6 +84,7 @@ void Esp32MQTT::start(bool init) {
     connectToWifi();
   }
 }
+
 void Esp32MQTT::setupTimers() {
   mqttReconnectTimer = xTimerCreate(
     "mqttTimer",
@@ -318,6 +320,11 @@ void Esp32MQTT::publishData(string data) {
 void Esp32MQTT::publishState(string key, string value) {
   string topic = string(this->stateTopic) + "/" + key;
   mqttClient.publish(topic.c_str(), 1, true, value.c_str());
+}
+
+void Esp32MQTT::publishMetric(string key, string metric) {
+  string topic = string(this->metricRoot) + key;
+  mqttClient.publish(topic.c_str(), 0, true, metric.c_str());
 }
 
 void Esp32MQTT::publishMetric(char *key, uint16_t metric) {

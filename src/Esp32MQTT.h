@@ -10,6 +10,7 @@ extern "C" {
 // #include <ESP8266WiFi.h>
 // #include "Esp32MQTT_App.h"
 // #include <Ticker.h>
+#include "esp_system.h"
 #include <functional>
 #include <stdio.h>
 #include <string>
@@ -30,9 +31,10 @@ class Esp32MQTT {
     char WiFiPass[255];
     char WiFiHost[255];
     // Config.
-    char mqttServer[255];
+    char mqttHost[255];
     char mqttUser[255];
     char mqttPass[255];
+    char mqttDevice[255];
     const uint16_t mqttPort = 1883;
 
     char ip[255];
@@ -74,6 +76,7 @@ class Esp32MQTT {
     void publishState(string key, string value);
     void publishMetric(char *key, uint16_t metric);
     void publishMetric(string key, uint16_t metric);
+    void publishMetric(string key, string metric);
     void publishMetric(string key, float metric);
     void publishMetric(string key, float metric, bool force);
     // Callbacks.
@@ -111,7 +114,6 @@ class Esp32MQTT {
     bool initMqtt = true;
     uint32_t availabilityInterval = 30000;
     void setup();
-    void setupOta();
     void subsribe();
     void callbackParceJson(string message);
     std::function<void(string param, string value)> callbackFunction;
