@@ -172,26 +172,21 @@ void Esp32MQTT::connectToMqtt() {
 
 void Esp32MQTT::onMqttConnect(bool sessionPresent) {
   mqtt.setOnline();
+  gpio_set_level(LED, HIGH);
   xTimerStart(mqttAvailabilityTimer, 0);
-  // mqtt.availabilityFlag = true;
   if (mqtt.debugLevel >= 2) {
     printf("Session present: %d\n", sessionPresent);
   }
 }
 
 void Esp32MQTT::setOnline() {
+  this->online = true;
   this->publishAvailability();
   this->mqttSubscribe();
   if (this->debugLevel >= 1) {
      printf("Connected to MQTT.\n");
      this->mqttTests();
   }
-  // Deprecated.
-  if (false) {
-    this->online = true;
-    this->onlineFlag = true;
-  }
-  gpio_set_level(LED, HIGH);
 }
 
 void Esp32MQTT::setOffline() {
@@ -304,7 +299,6 @@ void Esp32MQTT::setDebugLevel(uint8_t debugLevel) {
   }
 }
 
-// Esp32 Deprecated.
 void Esp32MQTT::availabilityTime() {
   mqtt.publishAvailability();
 }

@@ -23,10 +23,8 @@ class Esp32MQTT {
     bool test = false;
     bool online = false;
     int8_t debugLevel = 0;
-    // Flag.
-    bool onlineFlag = false;
+    // Flag (TODO).
     bool messageFlag = false;
-    bool availabilityFlag = false;
     // Set.
     char WiFiSsid[255];
     char WiFiPass[255];
