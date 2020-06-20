@@ -1,18 +1,25 @@
 #ifndef Mqtt_h
-#ifdef ESP8266
 #define Mqtt_h
 
 #include <AsyncMqttClient.h>
-#include <ESP8266WiFi.h>
-#include <Ticker.h>
+#include <WiFi.h>
+extern "C" {
+  #include "freertos/FreeRTOS.h"
+  #include "freertos/timers.h"
+}
+// #include <ESP8266WiFi.h>
+// #include "Esp32MQTT_App.h"
+// #include <Ticker.h>
 #include <functional>
+#include <stdio.h>
 #include <string>
-#include "EspMQTT_App.h"
 using std::string;
 
-class EspMQTT {
+// TODO:
+#define LED GPIO_NUM_22
+
+class Esp32MQTT {
   public:
-    bool ota = false;
     bool test = false;
     bool online = false;
     int8_t debugLevel = 0;
@@ -51,7 +58,7 @@ class EspMQTT {
     void messageLoop();
 
     void start(bool init = true);
-    void otaBegin();
+    void setupTimers();
     void setDebugLevel(uint8_t debugLevel);
     void setOta(bool ota);
     // WiFi setters.
@@ -62,8 +69,7 @@ class EspMQTT {
     void setstringValue(char* name, char* value);
     void addSubsribeTopic(string topic);
     // Loop.
-    void loop();
-    void setAvailabilityInterval(uint16_t sec);
+    void setAvailabilityInterval(uint16_t se, bool onSetup = false);
 
     // Send.
     void publishData(string data);
@@ -86,15 +92,21 @@ class EspMQTT {
 
     // Async.
     static void connectToWifi();
-    static void onWifiConnect(const WiFiEventStationModeGotIP& event);
-    static void onWifiDisconnect(const WiFiEventStationModeDisconnected& event);
+    static void onWifiConnect(WiFiEvent_t even);
+    static void onWifiDisconnect(WiFiEvent_t even);
+    static void WiFiEvent(WiFiEvent_t event);
     static void connectToMqtt();
-    static void publishAvailabilityFlagger();
+    static void availabilityTime();
     static void onMqttConnect(bool sessionPresent);
     static void onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
     static void onMqttSubscribe(uint16_t packetId, uint8_t qos);
     static void onMqttUnsubscribe(uint16_t packetId);
-    static void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
+    static void onMqttMessage(char* topic,
+                              char* payload,
+                              AsyncMqttClientMessageProperties prop,
+                              size_t len,
+                              size_t index,
+                              size_t total);
     static void onMqttPublish(uint16_t packetId);
 
   private:
@@ -106,7 +118,6 @@ class EspMQTT {
     void callbackParceJson(string message);
     std::function<void(string param, string value)> callbackFunction;
 };
-extern EspMQTT mqtt;
+extern Esp32MQTT mqtt;
 
-#endif
 #endif /* !Mqtt_h */

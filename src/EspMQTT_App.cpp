@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include "EspMQTT.h"
 #include "EspMQTT_App.h"
 using std::string;
 

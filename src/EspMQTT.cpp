@@ -1,3 +1,4 @@
+#ifdef ESP8266
 #include <Arduino.h>
 #include "EspMQTT.h"
 #include "EspMQTT_App.h"
@@ -329,3 +330,4 @@ void EspMQTT::publishMetric(string key, float metric, bool force) {
     mqttClient.publish(topic.c_str(), 0, true, message);
   }
 }
+#endif
