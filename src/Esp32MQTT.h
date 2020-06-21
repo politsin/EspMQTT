@@ -1,19 +1,12 @@
 #ifndef Mqtt_h
 #define Mqtt_h
-
-#include <AsyncMqttClient.h>
-#include <WiFi.h>
-extern "C" {
-  #include "freertos/FreeRTOS.h"
-  #include "freertos/timers.h"
-}
-// #include <ESP8266WiFi.h>
-// #include "Esp32MQTT_App.h"
-// #include <Ticker.h>
-#include "esp_system.h"
-#include <functional>
-#include <stdio.h>
 #include <string>
+#include <stdio.h>
+#include <functional>
+#include <WiFi.h>
+#include <AsyncMqttClient.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/timers.h"
 using std::string;
 
 // TODO:

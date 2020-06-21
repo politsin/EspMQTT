@@ -65,8 +65,6 @@ void Esp32MQTT::start(bool init) {
       printf("MQTT Start\n");
     }
     setupTimers();
-    printf("Connecting to Wi-Fi...\n");
-
     mqttClient.onConnect(onMqttConnect);
     mqttClient.onDisconnect(onMqttDisconnect);
     mqttClient.onSubscribe(onMqttSubscribe);
@@ -78,8 +76,7 @@ void Esp32MQTT::start(bool init) {
     mqttClient.setCredentials(this->mqttUser, this->mqttPass);
     mqttClient.setWill(availabilityTopic, 0, true, "offline");
     // WiFi.
-    // WiFi.mode(WIFI_STA);
-    // WiFi.hostname(this->WiFiHost);
+    WiFi.mode(WIFI_MODE_STA);
     WiFi.onEvent(WiFiEvent);
     connectToWifi();
   }
@@ -185,9 +182,11 @@ void Esp32MQTT::setOnline() {
   this->online = true;
   this->publishAvailability();
   this->mqttSubscribe();
+  WiFi.setHostname(this->WiFiHost);
   if (this->debugLevel >= 1) {
-     printf("Connected to MQTT.\n");
-     this->mqttTests();
+    printf("Connected to MQTT.\n");
+    printf("Set HostName %s.\n", this->WiFiHost);
+    this->mqttTests();
   }
 }
 
