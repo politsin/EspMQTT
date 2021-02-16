@@ -1,4 +1,4 @@
-# ESP8266 > MQTT
+# ESP32 > MQTT
 ESP8266 foundation library for MQTT based HomeIOT
 
 ```cpp
