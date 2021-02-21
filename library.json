@@ -6,7 +6,7 @@
     "name": "Anatoly Politsin",
     "url": "https://politsin.ru"
   },
-  "version": "1.0.24",
+  "version": "1.0.25",
   "frameworks": "arduino",
   "platforms": ["espressif32"],
   "repository": {

@@ -3,39 +3,63 @@ ESP32 foundation library for MQTT based HomeIOT
 
 ```cpp
 #include <Arduino.h>
-#include "EspMQTT.h"
+using std::string;
 
+#include <freertos/queue.h>
+QueueHandle_t mqttQueue;
+typedef struct {
+  string name;
+  string metric;
+} mqttMessage;
+
+// EspMqtt.
+#include "EspMQTT.h"
 EspMQTT mqtt;
 void mqtt_callback(std::string param, std::string value);
 
-void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
-  Serial.begin(115200);
-  Serial.println("\nSetup");
+void mqttSetup() {
+  uint16_t debugLevel = 0;
+  if (debugLevel) {
+    mqtt.debugLevel = debugLevel;
+    mqtt.setAvailabilityInterval(5);
+  }
   // MqTT:
-  mqtt.setWiFi("MY_ssid", "MY_pass", "MY_hostname");
-  mqtt.setMqtt("MY_host", "MY_user", "MY_pass");
-  mqtt.setCommonTopics("home/light", "roomled");  // (topicRoot, device)
+  mqtt.setWiFi("wifi-name", "wifi-pass", "hostname");
+  mqtt.setMqtt("mqtt-server", "mqtt-user", "mqtt-pass");
+  mqtt.setCommonTopics("my/root/topic/dir", "ds18b20");
   mqtt.setCallback(mqtt_callback);
-  // mqtt.ota = true;                             // Default: false;
-  // mqtt.test = true;                            // Default: false;
-  // mqtt.debug = true;                           // Default: false;
-  // mqtt.setAvailabilityInterval(sec)            // Default: 30sec;
-  mqtt.start();
+  mqtt.start(true);
 }
 
-void loop() {
-  mqtt.loop(); // otaHandle;
-  if (WiFi.isConnected() && mqtt.online) {
-    // Do someshing.
-  }
-  yield();
+
+// Main.cpp Setup.
+void setup() {
+  mqttSetup();
+  mqttQueue = xQueueCreate(10, sizeof(mqttMessage));
 }
+
+// Main.cpp Loop.
+float counter = 1.1;
+void loop() {
+  if (xQueueReceive(mqttQueue, &message, 100 / portTICK_PERIOD_MS) == pdFALSE) {
+    mqtt.publishMetric(message.name, message.metric);
+    // printf("mqtt [%s] push = %s\n", msg.name.c_str(), msg.metric.c_str());
+  }
+  else {
+    counter += 0.1;
+    char data[10];
+    sprintf(data, "%.2f", counter);
+    string metric = std::string(data);
+    mqttMessage msg = {"temperature", metric};
+    xQueueSend(mqttQueue, &msg, portMAX_DELAY);
+  }
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
+}
+
 
 void mqtt_callback(std::string param, std::string value) {
   uint16_t val = atoi(value.c_str());
-  Serial.printf("%s=%s\n", param.c_str(), message.c_str());
+  printf("%s=%s\n", param.c_str(), message.c_str());
 }
 ```
 
