@@ -1,14 +1,14 @@
 {
   "name": "EspMQTT",
-  "keywords": "esp, mqtt, arduino, esp8266, esp32, wifi, iot",
+  "keywords": "esp, mqtt, arduino, esp32, wifi, iot",
   "description": "ESP8266 foundation library for MQTT based HomeIOT",
   "authors": {
     "name": "Anatoly Politsin",
     "url": "https://politsin.ru"
   },
-  "version": "1.0.23",
+  "version": "1.0.24",
   "frameworks": "arduino",
-  "platforms": ["espressif8266", "espressif32"],
+  "platforms": ["espressif32"],
   "repository": {
     "type": "git",
     "url": "https://github.com/politsin/EspMQTT.git"

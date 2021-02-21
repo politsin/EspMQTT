@@ -3,15 +3,6 @@
 
 #include "EspMQTT.h"
 
-#ifdef ESP32
-  #include "Esp32MQTT.h"
-#elif defined(ESP8266)
-  #include "EspMQTT.h"
-#else
-#error Platform not supported
-#endif
-
-
 #include <string>
 using std::string;
 
