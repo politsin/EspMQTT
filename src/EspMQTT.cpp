@@ -2,6 +2,10 @@
 #include "EspMQTT_App.h"
 #include <Arduino.h>
 #include <WiFi.h>
+// mqtt.
+#include "esp_log.h"
+#include "esp_tls.h"
+#include "mqtt_client.h"
 
 using std::string;
 // MQTT.
@@ -85,25 +89,38 @@ void EspMQTT::mqttClientSetup(bool proxy) {
     mqttClient.setServer(this->mqttHost, this->mqttPort);
     mqttClient.setCredentials(this->mqttUser, this->mqttPass);
     mqttClient.setWill(availabilityTopic, 0, true, "offline");
-  } 
-  else {
+  } else {
+    // OOOps. Old EDF version.
+    // const esp_mqtt_client_config_t mqtt_cfg = {
+    //   // .uri = "mqtt://mqtt.eclipse.org:1884",
+    //   host : this->mqttHost,
+    //   port : this->mqttPort,
+    //   username : this->mqttUser,
+    //   password : this->mqttPass,
+    //   lwt_topic : this->availabilityTopic,
+    //   lwt_msg : "offline"
+    // };
+    // esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    // esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID,
+    // mqtt_event_handler,
+    //                                client);
+    // esp_mqtt_client_start(client);
   }
 }
-
-void EspMQTT::mqttClientProxyConnect() { mqttClient.connect(); }
+// [mqttClient.] Proxy:
+void EspMQTT::connect() { mqttClient.connect(); }
 uint16_t EspMQTT::subscribe(const char *topic, uint8_t qos) {
   printf("subs %s\n", topic);
   return mqttClient.subscribe(topic, qos);
 }
-
 uint16_t EspMQTT::publish(const char *topic, uint8_t qos, bool retain,
-                          const char *payload, size_t length, bool dup,
-                          uint16_t message_id) {
+                          const char *payload) {
   if (this->debugLevel) {
     printf("%s [%s]\n", topic, payload);
   }
   return mqttClient.publish(topic, qos, retain, payload);
 }
+// [mqttClient.] Proxy: //Finish.
 
 void EspMQTT::setupTimers() {
   mqttReconnectTimer =
@@ -177,7 +194,7 @@ void EspMQTT::connectToMqtt() {
   if (mqtt.debugLevel >= 2) {
     printf("Connecting to MQTT...\n");
   }
-  mqtt.mqttClientProxyConnect();
+  mqtt.connect();
 }
 
 void EspMQTT::onMqttConnect(bool sessionPresent) {
@@ -263,8 +280,8 @@ void EspMQTT::onMqttUnsubscribe(uint16_t packetId) {
 }
 
 void EspMQTT::onMqttMessage(char *topic, char *payload,
-                              AsyncMqttClientMessageProperties prop, size_t len,
-                              size_t index, size_t total) {
+                            AsyncMqttClientMessageProperties prop, size_t len,
+                            size_t index, size_t total) {
   uint8_t pos = mqtt.cmdTopicLength;
   if ((char)topic[pos] == '$') {
     eapp.appInterrupt(topic, payload, len);
@@ -304,8 +321,6 @@ void EspMQTT::setDebugLevel(uint8_t debugLevel) {
 }
 
 void EspMQTT::availabilityTime() { mqtt.publishAvailability(); }
-
-
 
 void EspMQTT::publishAvailability() {
   this->publish(ipTopic, 0, true, this->ip);

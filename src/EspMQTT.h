@@ -78,11 +78,10 @@ public:
   // Timers.
   // MqttClient.
   void mqttClientSetup(bool proxy = true);
-  void mqttClientProxyConnect();
+  void connect();
   uint16_t subscribe(const char *topic, uint8_t qos);
   uint16_t publish(const char *topic, uint8_t qos, bool retain,
-                   const char *payload = nullptr, size_t length = 0,
-                   bool dup = false, uint16_t message_id = 0);
+                   const char *payload = nullptr);
 
   // Online.
   void mqttTests();
