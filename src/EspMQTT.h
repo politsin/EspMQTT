@@ -76,6 +76,13 @@ public:
   // void callback(char *topic, char *payload, uint16_t length);
   void setCallback(std::function<void(string param, string value)> cBack);
   // Timers.
+  // MqttClient.
+  void mqttClientSetup(bool proxy = true);
+  void mqttClientProxyConnect();
+  uint16_t subscribe(const char *topic, uint8_t qos);
+  uint16_t publish(const char *topic, uint8_t qos, bool retain,
+                   const char *payload = nullptr, size_t length = 0,
+                   bool dup = false, uint16_t message_id = 0);
 
   // Online.
   void mqttTests();
@@ -104,7 +111,6 @@ private:
   bool initMqtt = true;
   uint32_t availabilityInterval = 30000;
   void setup();
-  void subsribe();
   void callbackParceJson(string message);
   std::function<void(string param, string value)> callbackFunction;
 };

@@ -65,6 +65,16 @@ void EspMQTT::start(bool init) {
       printf("MQTT Start\n");
     }
     setupTimers();
+    mqttClientSetup(true);
+    // WiFi.
+    WiFi.mode(WIFI_MODE_STA);
+    WiFi.onEvent(WiFiEvent);
+    connectToWifi();
+  }
+}
+
+void EspMQTT::mqttClientSetup(bool proxy) {
+  if (proxy) {
     mqttClient.onConnect(onMqttConnect);
     mqttClient.onDisconnect(onMqttDisconnect);
     mqttClient.onSubscribe(onMqttSubscribe);
@@ -75,11 +85,24 @@ void EspMQTT::start(bool init) {
     mqttClient.setServer(this->mqttHost, this->mqttPort);
     mqttClient.setCredentials(this->mqttUser, this->mqttPass);
     mqttClient.setWill(availabilityTopic, 0, true, "offline");
-    // WiFi.
-    WiFi.mode(WIFI_MODE_STA);
-    WiFi.onEvent(WiFiEvent);
-    connectToWifi();
+  } 
+  else {
   }
+}
+
+void EspMQTT::mqttClientProxyConnect() { mqttClient.connect(); }
+uint16_t EspMQTT::subscribe(const char *topic, uint8_t qos) {
+  printf("subs %s\n", topic);
+  return mqttClient.subscribe(topic, qos);
+}
+
+uint16_t EspMQTT::publish(const char *topic, uint8_t qos, bool retain,
+                          const char *payload, size_t length, bool dup,
+                          uint16_t message_id) {
+  if (this->debugLevel) {
+    printf("%s [%s]\n", topic, payload);
+  }
+  return mqttClient.publish(topic, qos, retain, payload);
 }
 
 void EspMQTT::setupTimers() {
@@ -154,7 +177,7 @@ void EspMQTT::connectToMqtt() {
   if (mqtt.debugLevel >= 2) {
     printf("Connecting to MQTT...\n");
   }
-  mqttClient.connect();
+  mqtt.mqttClientProxyConnect();
 }
 
 void EspMQTT::onMqttConnect(bool sessionPresent) {
@@ -189,13 +212,13 @@ void EspMQTT::mqttTests() {
     const char *topic = test.c_str();
     printf("--== Statr Tests == --\n");
     printf("%s\n", topic);
-    uint16_t packetIdSub = mqttClient.subscribe(topic, 2);
+    uint16_t packetIdSub = this->subscribe(topic, 2);
     printf("T0:  Subscribing at QoS 2, packetId: %d\n", packetIdSub);
-    mqttClient.publish(topic, 0, true, "test 1");
+    this->publish(topic, 0, true, "test 1");
     printf("T1:  Publishing at QoS 0\n");
-    uint16_t packetIdPub1 = mqttClient.publish(topic, 1, true, "test 2");
+    uint16_t packetIdPub1 = this->publish(topic, 1, true, "test 2");
     printf("Т2:  Publishing at QoS 1, packetId: %d\n", packetIdPub1);
-    uint16_t packetIdPub2 = mqttClient.publish(topic, 2, true, "test 3");
+    uint16_t packetIdPub2 = this->publish(topic, 2, true, "test 3");
     printf("Т3:  Publishing at QoS 2, packetId: %d\n", packetIdPub2);
     printf("--== End Tests Inits == --\n");
   }
@@ -266,7 +289,7 @@ void EspMQTT::onMqttPublish(uint16_t packetId) {
   }
 }
 
-void EspMQTT::mqttSubscribe() { mqttClient.subscribe(this->cmdTopic, 2); }
+void EspMQTT::mqttSubscribe() { this->subscribe(this->cmdTopic, 2); }
 
 void EspMQTT::setCallback(
     std::function<void(string param, string value)> cBack) {
@@ -282,26 +305,28 @@ void EspMQTT::setDebugLevel(uint8_t debugLevel) {
 
 void EspMQTT::availabilityTime() { mqtt.publishAvailability(); }
 
+
+
 void EspMQTT::publishAvailability() {
-  mqttClient.publish(ipTopic, 0, true, this->ip);
-  mqttClient.publish(availabilityTopic, 0, true, "online");
+  this->publish(ipTopic, 0, true, this->ip);
+  this->publish(availabilityTopic, 0, true, "online");
   if (this->debugLevel >= 1) {
     printf("MQTT [Publish Availability] at %s\n", ip);
   }
 }
 
 void EspMQTT::publishData(string data) {
-  mqttClient.publish(dataTopic, 0, true, data.c_str());
+  this->publish(dataTopic, 0, true, data.c_str());
 }
 
 void EspMQTT::publishState(string key, string value) {
   string topic = string(this->stateTopic) + "/" + key;
-  mqttClient.publish(topic.c_str(), 1, true, value.c_str());
+  this->publish(topic.c_str(), 1, true, value.c_str());
 }
 
 void EspMQTT::publishMetric(string key, string metric) {
   string topic = string(this->metricRoot) + key;
-  mqttClient.publish(topic.c_str(), 0, true, metric.c_str());
+  this->publish(topic.c_str(), 0, true, metric.c_str());
 }
 
 void EspMQTT::publishMetric(char *key, uint16_t metric) {
@@ -310,14 +335,14 @@ void EspMQTT::publishMetric(char *key, uint16_t metric) {
   char topic[255];
   strcpy(topic, this->metricRoot);
   strcat(topic, key);
-  mqttClient.publish(topic, 0, true, message);
+  this->publish(topic, 0, true, message);
 }
 
 void EspMQTT::publishMetric(string key, uint16_t metric) {
   char message[16];
   itoa(metric, message, 10);
   string topic = string(this->metricRoot) + key;
-  mqttClient.publish(topic.c_str(), 0, true, message);
+  this->publish(topic.c_str(), 0, true, message);
 }
 
 void EspMQTT::publishMetric(string key, float metric) {
@@ -331,6 +356,6 @@ void EspMQTT::publishMetric(string key, float metric, bool force) {
     char message[16];
     itoa(metric, message, 10);
     string topic = string(this->metricRoot) + key;
-    mqttClient.publish(topic.c_str(), 0, true, message);
+    this->publish(topic.c_str(), 0, true, message);
   }
 }
